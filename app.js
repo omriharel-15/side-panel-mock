@@ -1,0 +1,1271 @@
+/* =====================================================================
+   New Side Panel — interactive mock on Mosaic/TIP foundations.
+   Visual ground truth: TIP design-system tokens + ido-management-ui
+   canvas SCSS (see README). Behaviors: side-panel-handshake-draft.md.
+   ===================================================================== */
+
+/* ---------- icons ---------- */
+const I = {
+  person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>',
+  card:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>',
+  eyeOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M1 1l22 22"/></svg>',
+  eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  clone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg>',
+  docs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m20 12-1.4-1.4L16 13.2V4h-2v9.2l-2.6-2.6L10 12l4 4Z"/></svg>',
+  dot:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="7"/></svg>',
+  code:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg>',
+  link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+  chevUp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 15 6-6 6 6"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  ret:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>',
+  dots:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.4"/><circle cx="15" cy="6" r="1.4"/><circle cx="9" cy="12" r="1.4"/><circle cx="15" cy="12" r="1.4"/><circle cx="9" cy="18" r="1.4"/><circle cx="15" cy="18" r="1.4"/></svg>',
+  passkey:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 11a4 4 0 1 0-4-4"/><path d="M12 11v10"/><path d="M12 15h4"/><path d="M2 21a10 10 0 0 1 10-10"/></svg>',
+  star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m12 3 2.7 5.6 6.3.9-4.5 4.4 1 6.1L12 17l-5.5 3 1-6.1L3 9.5l6.3-.9z"/></svg>',
+  people:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0M16 4a3 3 0 0 1 0 6M21 20a6 6 0 0 0-5-5.9"/></svg>',
+  flow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M6 8.5V12h12V8.5M12 12v3.5"/></svg>',
+  keyuser:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="8" r="3.5"/><path d="M3 20a7 7 0 0 1 14 0M16 8h6M19 8v3"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg>',
+  idcard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16a3 3 0 0 1 6 0M15 9h4M15 13h4"/></svg>',
+  usercog:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="18" cy="8" r="2.4"/><path d="M18 4.5V6M18 10v1.5M21 8h-1.5M16.5 8H15"/></svg>',
+  session:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M8 9l2.5 2.5L15 7"/></svg>',
+  db:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5V18.5c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8V5.5"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/></svg>',
+  connect:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 21v-4a2 2 0 0 1 2-2h4M21 9h-4a2 2 0 0 1-2-2V3M3 15h4a2 2 0 0 1 2 2v4"/></svg>'
+};
+
+/* ---------- categories: prod step-icons.service (cyan user / mustard server) ---------- */
+const CAT = {
+  user:   { color:'var(--user-cyan)',      icon:I.person, label:'User interaction step' },
+  server: { color:'var(--server-mustard)', icon:I.card,   label:'System execution step' },
+};
+
+/* =====================================================================
+   Journey — HE Passkey Login (real export)
+   ===================================================================== */
+const NODES = {
+  'get-info': {
+    id:'get-info', title:'Get information from client', cat:'user', userFacing:true,
+    desc:'Requests info from the client app (such as user input collected using a form).',
+    x:170, y:340, branches:[{id:'default', label:'Default', type:'plain'}],
+  },
+  'login-form': {
+    id:'login-form', title:'Login form', cat:'user', userFacing:true,
+    desc:'Present one or more authentication options to the client app. Enabling an authentication…',
+    x:480, y:340, branches:[{id:'password', label:'Password', type:'plain'},{id:'passkeys', label:'Passkeys', type:'plain'}],
+  },
+  'password-auth': {
+    id:'password-auth', title:'Password authentication', cat:'server', userFacing:true,
+    desc:'Authenticate with password and sets the user context of this journey to the authenticated…',
+    x:810, y:160, branches:[{id:'failure', label:'Failure', type:'failure'},{id:'success', label:'Success', type:'success'}],
+  },
+  'passkeys-auth': {
+    id:'passkeys-auth', title:'Passkeys authentication', cat:'user', userFacing:true,
+    desc:'Authenticate with passkeys and sets the user context of this journey to the authenticated…',
+    x:810, y:460, branches:[{id:'failure', label:'Failure', type:'failure'},{id:'success', label:'Success', type:'success'}],
+  },
+  'known-device': {
+    id:'known-device', title:'Is known device', cat:'server', userFacing:false,
+    desc:'Check if the current device is already registered using the Crypto binding technol…',
+    x:1140, y:410, branches:[{id:'yes', label:'Yes', type:'success'},{id:'no', label:'No', type:'failure'}],
+  },
+  'email-validation': {
+    id:'email-validation', title:'Email validation', cat:'user', userFacing:true,
+    desc:'Validate provided email through a one-time passcode.',
+    x:1450, y:410, branches:[{id:'failure', label:'Failure', type:'failure'},{id:'success', label:'Success', type:'success'},{id:'branch_1', label:'branch 1', type:'plain'}],
+  },
+  'send-sms': {
+    id:'send-sms', title:'Send SMS', cat:'server', userFacing:false,
+    desc:'Send an SMS message to a recipient.',
+    x:1790, y:410, branches:[{id:'default', label:'Default', type:'plain'}],
+  },
+};
+
+const PILLS = [
+  { id:'goto-login', kind:'goto', label:'Login form', x:1170, y:200 },
+  { id:'complete', kind:'complete', label:'Complete Journ…', sub:'Flag this Journey as successfully co…', x:2130, y:340 },
+];
+
+/* email-validation's 'failure' and 'branch_1' branches are deliberately left
+   unwired here — they demonstrate the "unfinished branch" state that
+   allErrors() now blocks Save/Publish on, and that you can wire up yourself
+   by dragging from their ports (or the dynamic "+" next to them) onto any
+   node or the Complete pill. */
+const EDGES = [
+  { from:['start'], to:'get-info' },
+  { from:['get-info','default'], to:'login-form' },
+  { from:['login-form','password'], to:'password-auth' },
+  { from:['login-form','passkeys'], to:'passkeys-auth' },
+  { from:['password-auth','failure'], to:'pill:goto-login' },
+  { from:['password-auth','success'], to:'known-device' },
+  { from:['passkeys-auth','failure'], to:'pill:goto-login' },
+  { from:['passkeys-auth','success'], to:'known-device' },
+  { from:['known-device','yes'], to:'email-validation' },
+  { from:['known-device','no'], to:'email-validation' },
+  { from:['email-validation','success'], to:'send-sms' },
+  { from:['send-sms','default'], to:'pill:complete' },
+];
+
+/* =====================================================================
+   Panel models — product section grammar
+   ===================================================================== */
+/* The 5-value taxonomy per the categorization proposal (Step - New
+   Categorization Proposal.pdf, "New Step Category" column, pp.1-2/14-15):
+   old per-step section names (Step Title and Description, Credentials,
+   Configuration, Sent to the Client, Alternate Branches, ...) all
+   consolidate into exactly these five. Every step's Title/Description
+   override also collapses into General under the new model — it does NOT
+   get its own section (that was the old behavior we're retiring). */
+const FIELD_GROUP_ORDER = ['General','Input','Output','Error Management','Branching'];
+
+const PANELS = {
+  'get-info': {
+    blocks: [
+      { group:'Output', schemaLink:true, fields:[
+        { k:'app_data', kind:'expr', label:'App data', value:'{}' },
+        { k:'output_var', kind:'text', label:'Output Variable', value:'clientData', hint:'Name of output variable for the step result' },
+      ]},
+    ],
+  },
+  'login-form': {
+    blocks: [
+      { group:'General', kind:'methods', methods:[
+        { k:'m_password', label:'Password', on:true },
+        { k:'m_passkeys', label:'Passkeys', on:true },
+      ]},
+      { group:'Output', schemaLink:true, fields:[
+        { k:'app_data', kind:'expr', label:'App data', value:'{}' },
+        { k:'output_var', kind:'text', label:'Output Variable', value:'loginData', hint:'Name of output variable for the step result' },
+      ]},
+      { group:'Branching', kind:'summary', label:'Branches', value:'Password, Passkeys' },
+    ],
+  },
+  'password-auth': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'username', kind:'expr', label:'Username', value:'loginData.username' },
+        { k:'password', kind:'expr', label:'Password', value:'', required:true,
+          placeholder:'clientData.password',
+          validate:v => v.trim() ? null : 'This field is required' },
+      ]},
+      { group:'Output', fields:[
+        { k:'error_var', kind:'text', label:'Error output variable', value:'', hint:'Name of error variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+  'passkeys-auth': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'webauthn', kind:'expr', label:'Encoded result', value:'loginData.webauthn_encoded_result', hint:'WebAuthn Encoded Result' },
+      ]},
+      { group:'Output', fields:[
+        { k:'error_var', kind:'text', label:'Error output variable', value:'', hint:'Name of error variable for the step result' },
+        { k:'output_var', kind:'text', label:'Output Variable', value:'webauthnResult', hint:'Name of output variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+  'known-device': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'binding_key', kind:'expr', label:'Crypto binding key', value:'clientData.crypto_binding_key' },
+      ]},
+      { group:'Output', fields:[
+        { k:'output_var', kind:'text', label:'Output Variable', value:'isKnownDevice', hint:'Name of output variable for the step result' },
+      ]},
+    ],
+  },
+  'email-validation': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'email', kind:'expr', label:'Email', value:'clientData.userEmail' },
+        { kind:'stepper-row', steppers:[
+          { k:'code_length', label:'Code length', value:6, min:4, max:10 },
+          { k:'expiry', label:'Expiry', labelNote:'(Minutes)', value:6, min:1, max:60 },
+          { k:'max_attempts', label:'Max failed attempts', value:3, min:1, max:10 },
+        ]},
+      ]},
+      { group:'Output', fields:[
+        { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'End user failed validation', value:'Go to action failed branch', options:['Go to action failed branch','Abort journey','Retry step'] },
+        { k:'on_cancel', kind:'select', label:'End user clicked cancel', value:'Abort journey', options:['Abort journey','Go to action failed branch'] },
+      ]},
+      { group:'Branching', kind:'branches' },
+    ],
+  },
+  'send-sms': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'recipient', kind:'expr', label:'Recipient', value:'clientData.userPhone' },
+        { k:'message_body', kind:'expr', label:'Message body', value:'Your verification is complete.' },
+        { k:'sms_provider', kind:'ec', ecType:'sms', label:'SMS provider', value:'', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
+      ]},
+      { group:'Output', fields:[
+        { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of the variable to store the results of this action' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+};
+
+/* External Connections available per type. The dropdown must be honest
+   about enabled/disabled — disabled connections stay visible, just not
+   selectable. Seeded with one real-looking option per §4/R6.1. */
+const EC_OPTIONS = {
+  sms: [
+    { id:'twilio-prod', name:'Twilio Prod', enabled:true },
+    { id:'legacy-sms-gateway', name:'Legacy SMS Gateway', enabled:false },
+  ],
+};
+
+const CUSTOM_BRANCHES = {
+  'email-validation': {
+    outputVar:'',
+    items:[ { id:'branch_1', display:'' } ],
+  },
+};
+
+/* ---------- per-step UI state ---------- */
+const stepState = {};
+function S(id){
+  if(!stepState[id]) stepState[id] = { mode:'view', touched:new Set(), collapsed:{}, hidden:false };
+  return stepState[id];
+}
+let currentStep = null;
+let hoveredStep = null;
+let previewOpen = false, previewDevice = 'desktop';
+let savedOnce = false, publishedFlash = false, dirty = false, publishedFlashTimer = null;
+/* Publish is not just "errors === 0" — it's gated behind an explicit Save
+   click that happens to find zero errors. `savedValid` is that gate: it
+   only turns true inside onSaveClick, and any edit (markDirty) turns it
+   back off immediately, so editing after a publish — even editing that
+   doesn't reintroduce an error — demotes the button back to Save until the
+   user explicitly saves again. */
+let savedValid = false;
+let zoom = 1, panX = 40, panY = 120;
+
+/* ---------- helpers ---------- */
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function toast(msg){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
+}
+const BARE_REF = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)+$/;
+/* `dirty` only tracks whether the journey has EVER been touched (drives the
+   idle/pale Save styling before the first edit — but only when there are also
+   zero outstanding errors; a journey that ships with pre-existing errors must
+   never look idle/inert, since there's genuinely something to fix). Validation
+   must recompute
+   on every single edit, not just the first — otherwise editing a journey
+   back into a broken state after a Publish never re-surfaces, which is
+   exactly the "Publish is enabled and that's that" bug. Any edit also cancels
+   a still-showing "Published ✓" flash — that flash is not allowed to outlive
+   a change that might have just broken the journey again. */
+function markDirty(){
+  dirty=true;
+  savedValid=false;
+  if(publishedFlash){
+    publishedFlash=false;
+    clearTimeout(publishedFlashTimer);
+  }
+  refreshSaveArea();
+}
+
+function fieldsOf(nodeId){
+  const model = PANELS[nodeId]; if(!model) return [];
+  const out=[];
+  model.blocks.forEach(block=>{
+    (block.fields||[]).forEach(f=>{ if(f.kind==='stepper-row'){ f.steppers.forEach(st=>out.push({group:block.group,f:st})); } else out.push({group:block.group,f}); });
+  });
+  return out;
+}
+function fieldErrors(nodeId){
+  const errs=[];
+  fieldsOf(nodeId).forEach(({group,f})=>{
+    if(f.validate){ const m=f.validate(String(f.value??'')); if(m) errs.push({nodeId,key:f.k,label:f.label,group,message:m}); }
+  });
+  const cb=CUSTOM_BRANCHES[nodeId];
+  if(cb) cb.items.forEach((b,i)=>{
+    if(!b.display.trim()) errs.push({nodeId,key:'cb-display-'+i,label:'Branch display name',group:'Branching',message:'This field is required'});
+  });
+  // A branch that routes nowhere isn't a real, publishable journey — matches
+  // the real product's requirement that every branch terminate somewhere
+  // (another step, Complete, Reject) before publish is allowed.
+  (NODES[nodeId].branches||[]).forEach(b=>{
+    const wired=EDGES.some(e=>e.from[0]===nodeId && e.from[1]===b.id);
+    if(!wired) errs.push({nodeId,key:'branch-conn-'+b.id,label:b.label,group:'Branching',message:'Not connected to a next step yet'});
+  });
+  return errs;
+}
+function allErrors(){ return Object.keys(NODES).flatMap(fieldErrors); }
+
+/* =====================================================================
+   Canvas
+   ===================================================================== */
+function renderCanvas(){
+  const root=$('#nodesRoot');
+  const sp=startNodePos();
+  let html=`
+    <div class="startnode" style="left:${sp.x}px;top:${sp.y}px">
+      <div class="start-circle">${I.play}</div><div class="start-label">Start</div>
+    </div>`;
+  Object.values(NODES).forEach(n=>{
+    const st=S(n.id); const cat=CAT[n.cat];
+    const sel=n.id===currentStep?' selected':'';
+    // prod: error state paints the accent red (unless hovered/selected — CSS wins there)
+    const hasErrors=fieldErrors(n.id).length>0;
+    const accent=hasErrors?'var(--error)':cat.color;
+    const iconTint=hasErrors?'var(--error)':cat.color;
+    const branchRows=n.branches.map(b=>{
+      const mark=b.type==='success'?I.check:b.type==='failure'?I.x:'';
+      return `
+      <div class="branchline ${b.type}" data-port="${n.id}:${b.id}">
+        <span class="bmark">${mark}</span>${esc(b.label)}
+        <span class="drag-dots">${I.dots}</span>
+        <span class="port"></span>
+      </div>`;
+    }).join('');
+    html+=`
+    <div class="nodewrap" id="wrap-${n.id}" data-node="${n.id}" style="left:${n.x}px;top:${n.y}px;--node-color:${accent};--icon-color:${iconTint}">
+      <div class="quicktools">
+        <button class="qbtn" onclick="event.stopPropagation();openPanel('${n.id}','view')">${I.eye}View</button>
+        <button class="qbtn" onclick="event.stopPropagation();openPanel('${n.id}','edit')">${I.pencil}Edit</button>
+        <button class="qbtn" title="Duplicate" onclick="event.stopPropagation();toast('Duplicate step')">${I.clone}</button>
+        <button class="qbtn" title="Delete" onclick="event.stopPropagation();deleteStep('${n.id}')">${I.trash}</button>
+      </div>
+      <div class="stepnode${sel}" id="node-${n.id}">
+        <div class="node-head">
+          <span class="node-title">${esc(n.title)}</span>
+          <span class="node-icons">
+            <span class="cat-icon" title="${cat.label}">${cat.icon}</span>
+            <button class="vis-toggle${st.hidden?' hidden-step':''}" title="${st.hidden?'Step hidden from client view — click to show':'Hide step from client view'}" onclick="event.stopPropagation();toggleVisibility('${n.id}')">${st.hidden?I.eye:I.eyeOff}</button>
+            <button class="kebab" title="More" onclick="event.stopPropagation();toggleKebab('${n.id}')">⋮</button>
+          </span>
+        </div>
+        ${branchRows}
+        <div class="node-desc">${esc(n.desc)}</div>
+        <div class="kebabmenu" id="kebab-${n.id}">
+          <button onclick="toast('Opens step documentation')">${I.docs}View docs</button>
+          <button onclick="toast('Pinned to the top of the step library')">${I.pin}Pin step</button>
+          <button class="danger" onclick="toast('Breakpoint set — journey debugger will pause here')">${I.dot}Set breakpoint</button>
+        </div>
+      </div>
+    </div>`;
+  });
+  PILLS.forEach(p=>{
+    if(p.kind==='goto'){
+      html+=`<div class="pill goto" id="pill-${p.id}" style="left:${p.x}px;top:${p.y}px">${I.ret}${esc(p.label)}</div>`;
+    } else if(p.kind==='complete'){
+      html+=`<div class="pill complete" id="pill-${p.id}" style="left:${p.x}px;top:${p.y}px">
+        <span class="badge-circle">${I.check}</span><span>${esc(p.label)}<div class="pill-sub">${esc(p.sub)}</div></span></div>`;
+    }
+  });
+  root.innerHTML=html;
+  root.querySelectorAll('.branchline[data-port]').forEach(rowEl=>{
+    const portEl=rowEl.querySelector('.port');
+    const [nid,bid]=rowEl.dataset.port.split(':');
+    portEl.addEventListener('mousedown',(e)=>startWireDrag(e,nid,bid));
+  });
+  Object.values(NODES).forEach(n=>{
+    const el=document.getElementById('node-'+n.id);
+    el.addEventListener('mousedown',(e)=>startNodePress(e,n.id));
+    const wrap=document.getElementById('wrap-'+n.id);
+    wrap.addEventListener('mouseenter',()=>{ hoveredStep=n.id; drawEdges(); });
+    wrap.addEventListener('mouseleave',()=>{ if(hoveredStep===n.id){ hoveredStep=null; drawEdges(); } });
+  });
+  positionGroupFrame();
+  requestAnimationFrame(()=>{ drawEdges(); renderDanglingAdders(); });
+  refreshSaveArea();
+}
+
+/* Branches with no outgoing edge — used both to block Save/Publish
+   (allErrors(), via fieldErrors' branch-conn check) and to render a small
+   convenience "+" right at that exact branch's port. */
+function danglingBranches(){
+  const out=[];
+  Object.values(NODES).forEach(n=>{
+    n.branches.forEach(b=>{
+      const wired=EDGES.some(e=>e.from[0]===n.id && e.from[1]===b.id);
+      if(!wired) out.push({nodeId:n.id, branchId:b.id});
+    });
+  });
+  return out;
+}
+function renderDanglingAdders(){
+  const layer=$('#danglingAdders');
+  if(!layer) return;
+  // Offset from the port itself (not centered on it) — otherwise the "+"
+  // sits directly on top of the draggable port and always wins the
+  // mousedown, making drag-to-wire unreachable for any dangling branch.
+  layer.innerHTML = danglingBranches().map(d=>{
+    const p=portPoint([d.nodeId,d.branchId]);
+    if(!p) return '';
+    return `<button class="dangling-adder" style="left:${p.x+16}px;top:${p.y}px" title="Connect this branch to a new step"
+      onclick="event.stopPropagation();openAddStep('${d.nodeId}','${d.branchId}')">+</button>`;
+  }).join('');
+}
+
+function startNodePos(){ return {x:60, y:NODES['get-info'].y+40}; }
+function positionGroupFrame(){
+  // Bounds must include the Start node and every PILLS entry (Complete,
+  // goto) — not just NODES — or they render outside the frame (the "weird
+  // border" bug). Neither is draggable, but they're still part of the
+  // diagram's visual extent.
+  const sp=startNodePos();
+  const xs=[...Object.values(NODES).map(n=>n.x), sp.x, ...PILLS.map(p=>p.x)];
+  const ys=[...Object.values(NODES).map(n=>n.y), sp.y, ...PILLS.map(p=>p.y)];
+  const gf=$('#groupframe');
+  const minX=Math.min(...xs)-56, minY=Math.min(...ys)-70;
+  const maxX=Math.max(...xs)+300, maxY=Math.max(...ys)+220;
+  gf.style.left=minX+'px'; gf.style.top=minY+'px';
+  gf.style.width=(maxX-minX)+'px'; gf.style.height=(maxY-minY)+'px';
+}
+
+function portPoint(ref){
+  const world=$('#world').getBoundingClientRect();
+  if(ref[0]==='start'){
+    const el=document.querySelector('.start-circle').getBoundingClientRect();
+    return {x:(el.right-world.left)/zoom, y:(el.top+el.height/2-world.top)/zoom};
+  }
+  const [nid,port]=ref;
+  const rowEl=document.querySelector(`[data-port="${nid}:${port}"]`);
+  const el=(rowEl||document.getElementById('node-'+nid));
+  if(!el) return null;
+  const r=el.getBoundingClientRect();
+  return {x:(r.right-world.left)/zoom+6, y:(r.top+r.height/2-world.top)/zoom};
+}
+function targetPoint(to){
+  const world=$('#world').getBoundingClientRect();
+  const el=to.startsWith('pill:')?document.getElementById('pill-'+to.slice(5)):document.getElementById('node-'+to);
+  if(!el) return null;
+  const r=el.getBoundingClientRect();
+  return {x:(r.left-world.left)/zoom, y:(r.top+r.height/2-world.top)/zoom};
+}
+
+/* Edge coloring — prod connection.component.ts logic:
+   default grey #999999 @1px; when the edge's source/target node is hovered
+   or selected → link color (success green / failure red / else blue) @2px. */
+const LINK_COLORS = { success:'#01B678', failure:'#ED3232', plain:'#6981FF' };
+function edgeStyle(e){
+  const srcNode=e.from[0], branchId=e.from[1];
+  const tgt=e.to.startsWith('pill:')?null:e.to;
+  const active=[currentStep,hoveredStep].some(s=>s&&(s===srcNode||s===tgt));
+  if(!active) return {color:'#999999', width:1};
+  const node=NODES[srcNode];
+  const type=node?(node.branches.find(b=>b.id===branchId)||{}).type:'plain';
+  return {color:LINK_COLORS[type]||LINK_COLORS.plain, width:2};
+}
+function drawEdges(){
+  const svg=$('#edges');
+  const colors=new Set();
+  const paths=[];
+  EDGES.forEach(e=>{
+    const a=portPoint(e.from), b=targetPoint(e.to);
+    if(!a||!b) return;
+    const {color,width}=edgeStyle(e);
+    colors.add(color);
+    const mx=(a.x+b.x)/2;
+    paths.push(`<path d="M ${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${b.y}, ${b.x-7} ${b.y}" stroke="${color}" stroke-width="${width}" fill="none" marker-end="url(#arrow-${color.slice(1)})"/>`);
+  });
+  const markers=[...colors].map(c=>
+    `<marker id="arrow-${c.slice(1)}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L7,4 L0,8 Z" fill="${c}"/></marker>`
+  ).join('');
+  let tempPath='';
+  if(wireDrag){
+    const a=portPoint([wireDrag.fromId,wireDrag.branchId]);
+    if(a){
+      const mx=(a.x+wireDrag.x)/2;
+      tempPath=`<path d="M ${a.x} ${a.y} C ${mx} ${a.y}, ${mx} ${wireDrag.y}, ${wireDrag.x} ${wireDrag.y}" stroke="#6981FF" stroke-width="2" fill="none" stroke-dasharray="4 3"/>`;
+    }
+  }
+  svg.innerHTML=`<defs>${markers}</defs>`+paths.join('')+tempPath;
+}
+
+/* ---------- pan / zoom / drag ---------- */
+function applyTransform(){
+  $('#panzone').style.transform=`translate(${panX}px,${panY}px)`;
+  $('#world').style.transform=`scale(${zoom})`;
+  $('#zoomRange').value=Math.round(zoom*100);
+  requestAnimationFrame(drawEdges);
+}
+function stepZoom(d){ zoom=Math.min(1.5,Math.max(0.5,+(zoom+d).toFixed(2))); applyTransform(); }
+function setZoomPct(v){ zoom=v/100; applyTransform(); }
+function resetView(){ zoom=1; panX=40; panY=120; applyTransform(); }
+
+let panDrag=null,nodePress=null,wireDrag=null,wireDropEl=null;
+$('#panzone').addEventListener('mousedown',(e)=>{
+  if(e.target.closest('.nodewrap,.pill,.dangling-adder,.startnode')) return;
+  panDrag={sx:e.clientX,sy:e.clientY,ox:panX,oy:panY,moved:false};
+  $('#panzone').classList.add('dragging');
+});
+function startNodePress(e,id){
+  if(e.target.closest('button,input,select,textarea,.quicktools,.kebabmenu,.port')) return;
+  e.stopPropagation();
+  nodePress={id,sx:e.clientX,sy:e.clientY,ox:NODES[id].x,oy:NODES[id].y,dragging:false};
+}
+/* Dragging a wire from a branch's output port onto any node or the Complete
+   pill (re)connects that exact branch — replacing whatever edge it had, so
+   the same gesture both wires a dangling branch and reorders an existing
+   one. Deliberately separate from nodePress/panDrag so a port mousedown
+   never also starts a node-drag or pan. */
+function startWireDrag(e,fromId,branchId){
+  e.stopPropagation();
+  e.preventDefault();
+  const world=$('#world').getBoundingClientRect();
+  wireDrag={fromId,branchId,x:(e.clientX-world.left)/zoom,y:(e.clientY-world.top)/zoom};
+  document.body.classList.add('wiring');
+  drawEdges();
+}
+function resolveWireDropElement(clientX,clientY){
+  const el=document.elementFromPoint(clientX,clientY);
+  if(!el) return null;
+  const nodeEl=el.closest('.nodewrap');
+  if(nodeEl){
+    const nid=nodeEl.dataset.node;
+    if(!wireDrag||nid===wireDrag.fromId) return null; // no self-loops
+    return {ref:nid, el:nodeEl};
+  }
+  const pillEl=el.closest('.pill.complete,.pill.goto');
+  if(pillEl) return {ref:'pill:'+pillEl.id.slice(5), el:pillEl};
+  return null;
+}
+function setWireDropHighlight(clientX,clientY){
+  const hit=resolveWireDropElement(clientX,clientY);
+  const el=hit?hit.el:null;
+  if(wireDropEl&&wireDropEl!==el) wireDropEl.classList.remove('drop-target');
+  if(el) el.classList.add('drop-target');
+  wireDropEl=el;
+}
+window.addEventListener('mousemove',(e)=>{
+  if(panDrag){
+    if(Math.abs(e.clientX-panDrag.sx)+Math.abs(e.clientY-panDrag.sy)>2) panDrag.moved=true;
+    panX=panDrag.ox+(e.clientX-panDrag.sx); panY=panDrag.oy+(e.clientY-panDrag.sy); applyTransform();
+  }
+  if(nodePress){
+    const dx=e.clientX-nodePress.sx, dy=e.clientY-nodePress.sy;
+    if(!nodePress.dragging && Math.abs(dx)+Math.abs(dy)>5) nodePress.dragging=true;
+    if(nodePress.dragging){
+      const n=NODES[nodePress.id];
+      n.x=nodePress.ox+dx/zoom; n.y=nodePress.oy+dy/zoom;
+      const w=document.getElementById('wrap-'+nodePress.id);
+      w.style.left=n.x+'px'; w.style.top=n.y+'px';
+      positionGroupFrame();
+      drawEdges();
+    }
+  }
+  if(wireDrag){
+    const world=$('#world').getBoundingClientRect();
+    wireDrag.x=(e.clientX-world.left)/zoom; wireDrag.y=(e.clientY-world.top)/zoom;
+    setWireDropHighlight(e.clientX,e.clientY);
+    drawEdges();
+  }
+});
+window.addEventListener('mouseup',(e)=>{
+  if(nodePress&&!nodePress.dragging) openPanel(nodePress.id, null);
+  else if(nodePress&&nodePress.dragging) markDirty();
+  if(panDrag&&!panDrag.moved&&!e.target.closest('.nodewrap,.pill,.dangling-adder,.canvas-head,.zoomctrl,.startnode')) closePanel();
+  if(wireDrag){
+    const hit=resolveWireDropElement(e.clientX,e.clientY);
+    if(hit){
+      for(let i=EDGES.length-1;i>=0;i--){
+        const ed=EDGES[i];
+        if(ed.from[0]===wireDrag.fromId && ed.from[1]===wireDrag.branchId) EDGES.splice(i,1);
+      }
+      EDGES.push({from:[wireDrag.fromId,wireDrag.branchId], to:hit.ref});
+      markDirty();
+    }
+    if(wireDropEl) wireDropEl.classList.remove('drop-target');
+    wireDropEl=null;
+    document.body.classList.remove('wiring');
+    wireDrag=null;
+    renderCanvas();
+  }
+  panDrag=null; nodePress=null;
+  $('#panzone').classList.remove('dragging');
+});
+document.addEventListener('click',(e)=>{
+  if(!e.target.closest('.kebab,.kebabmenu')) document.querySelectorAll('.kebabmenu').forEach(m=>m.classList.remove('show'));
+});
+function toggleKebab(id){
+  document.querySelectorAll('.kebabmenu').forEach(m=>{ if(m.id!=='kebab-'+id) m.classList.remove('show'); });
+  document.getElementById('kebab-'+id).classList.toggle('show');
+}
+function toggleVisibility(id){
+  S(id).hidden=!S(id).hidden;
+  const anyHidden=Object.keys(NODES).some(k=>S(k).hidden);
+  $('#visChip').textContent=anyHidden?'Custom':'All';
+  markDirty();
+  renderCanvas();
+}
+function deleteStep(id){
+  delete NODES[id];
+  delete stepState[id];
+  for(let i=EDGES.length-1;i>=0;i--){
+    const e=EDGES[i];
+    if(e.from[0]===id || e.to===id) EDGES.splice(i,1);
+  }
+  if(currentStep===id) closePanel();
+  if(hoveredStep===id) hoveredStep=null;
+  markDirty();
+  renderCanvas();
+  toast('Step deleted');
+}
+
+/* =====================================================================
+   Side panel
+   ===================================================================== */
+function openPanel(id, mode){
+  currentStep=id;
+  if(mode){ S(id).mode=mode; if(mode==='edit') noteEnteredEditMode(); }
+  previewOpen=false;
+  $('#sidepanel').classList.remove('closed');
+  renderPanel(); renderCanvas();
+}
+function closePanel(){
+  if(!currentStep) return;
+  currentStep=null; previewOpen=false;
+  $('#sidepanel').classList.add('closed');
+  renderCanvas();
+}
+function setMode(m){ S(currentStep).mode=m; if(m==='edit') noteEnteredEditMode(); previewOpen=false; renderPanel(); }
+/* Re-entering Edit mode after a clean Publish must force a fresh Save before
+   Publish is reachable again — you might change something, and even if you
+   don't, "Publish" should mean "this exact state was just verified," not
+   "this state was verified at some earlier point before you went back in."
+   Only demotes savedValid/publishedFlash — never touches any field's
+   touched-state, so per-field red/neutral styling is unaffected. A no-op if
+   Publish wasn't showing (e.g. still mid-edit, or errors already present). */
+function noteEnteredEditMode(){
+  if(!savedValid && !publishedFlash) return;
+  savedValid=false;
+  if(publishedFlash){ publishedFlash=false; clearTimeout(publishedFlashTimer); }
+  dirty=true;
+  refreshSaveArea();
+}
+function setDepthNoop(){}
+function togglePreview(){ previewOpen=!previewOpen; renderPanel(); }
+function setPreviewDevice(d){ previewDevice=d; renderPanel(); }
+
+function renderPanel(focusKey){
+  if(!currentStep) return;
+  const n=NODES[currentStep], st=S(currentStep);
+  $('#spTitle').textContent=n.title;
+  $('#spSub').textContent=S(n.id).descOverride||n.desc;
+  $('#spPreview').style.display=n.userFacing?'flex':'none';
+  $('#spPreview').classList.toggle('on',previewOpen);
+  $('#modeView').classList.toggle('on',!previewOpen&&st.mode==='view');
+  $('#modeEdit').classList.toggle('on',!previewOpen&&st.mode==='edit');
+  const body=$('#spBody');
+  body.innerHTML = previewOpen ? renderPreview(n) : (st.mode==='view'?renderViewMode(n):renderEditMode(n,st));
+  if(focusKey){
+    const el=body.querySelector(`[data-field="${focusKey}"]`);
+    if(el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'center'}); const inp=el.querySelector('input,select'); inp&&inp.focus(); }
+  }
+}
+
+/* ---------- Edit mode (product section cards) ---------- */
+function groupErrCount(nodeId, group){
+  return fieldErrors(nodeId).filter(e=>e.group===group).length;
+}
+function renderEditMode(n, st){
+  const model=PANELS[n.id];
+  const blocksByGroup=new Map(FIELD_GROUP_ORDER.map(g=>[g,[]]));
+  (model?.blocks||[]).forEach(b=>{ blocksByGroup.get(b.group).push(b); });
+  return FIELD_GROUP_ORDER.map(group=>{
+    const blocks=blocksByGroup.get(group);
+    // General always exists (every step can override title/description),
+    // even when the step has no other General-grouped fields.
+    if(group!=='General' && blocks.length===0) return '';
+    const bodies=blocks.map(b=>renderBlock(n,st,b));
+    if(group==='General') bodies.unshift(renderTitleDescBlock(st));
+    return sectionShell(group, groupErrCount(n.id,group), bodies.join(''), st.collapsed[group]);
+  }).join('');
+}
+function sectionShell(group, errs, body, collapsed){
+  return `<div class="section ${collapsed?'collapsed':''}" data-section="${group}">
+    <button class="section-head" onclick="toggleSection('${group}')">
+      <span class="sh-left">
+        <span class="chev">${I.chevUp}</span>
+        <span class="title">${esc(group)}</span>
+      </span>
+      ${errs?`<span class="errchip">${errs}</span>`:''}
+    </button>
+    <div class="section-body">${body}</div>
+  </div>`;
+}
+function renderTitleDescBlock(st){
+  return `
+    <div class="field"><label>Title</label>
+      <input class="tsinput" data-testid="title-override" value="${esc(st.titleOverride||'')}" oninput="onTitleOverride(this.value)">
+      <div class="field-hint">Override step title</div></div>
+    <div class="field"><label>Description</label>
+      <input class="tsinput" data-testid="desc-override" value="${esc(st.descOverride||'')}" oninput="S(currentStep).descOverride=this.value;markDirty()" onblur="renderPanel()">
+      <div class="field-hint">Override step description</div></div>`;
+}
+function renderBlock(n, st, block){
+  if(block.kind==='methods'){
+    return block.methods.map(m=>`
+      <div class="method-row"><span class="mr-left">${m.label==='Passkeys'?I.passkey:I.card}${esc(m.label)}</span>
+        <button class="toggle ${m.on?'on':''}" role="switch" aria-checked="${m.on}" aria-label="${esc(m.label)}"
+          onclick="this.classList.toggle('on');markDirty();toast('${esc(m.label)} ${m.on?'disabled':'enabled'}')"></button>
+      </div>`).join('');
+  }
+  if(block.kind==='summary'){
+    return `<div class="field"><label>${esc(block.label)}</label>
+      <div class="field-hint" style="font-size:12px;color:var(--black)">${esc(block.value)}</div></div>`;
+  }
+  if(block.kind==='branches'){
+    const cb=CUSTOM_BRANCHES[n.id]||{outputVar:'',items:[]};
+    return `
+      <div class="field"><label>Branch Output Variable</label>
+        <input class="tsinput" placeholder="Store info about an escape option triggered in the action"
+          value="${esc(cb.outputVar)}" oninput="CUSTOM_BRANCHES['${n.id}'].outputVar=this.value;markDirty()"></div>
+      ${cb.items.map((b,i)=>{
+        const err=!b.display.trim();
+        const touched=st.touched.has('cb-display-'+i);
+        return `
+        <div class="branchcard">
+          <div class="bc-toprow"><span class="bc-label">Branch ID</span>
+            <span style="display:flex;gap:12px;align-items:center">
+              <button class="schema-link" onclick="openSchemaModal()">${I.code} Schema editor</button>
+              ${cb.items.length>1?`<button class="bc-delete" title="Delete branch" onclick="removeBranch('${n.id}',${i})">${I.trash}</button>`:''}
+            </span>
+          </div>
+          <input class="tsinput" value="${esc(b.id)}" oninput="onBranchId('${n.id}',${i},this.value)">
+          <div class="field ${err&&touched?'invalid':''}" data-field="cb-display-${i}">
+            <label>Display name <span class="lbl-req">· required</span></label>
+            <input class="tsinput" placeholder="What the end user sees for this branch" value="${esc(b.display)}"
+              oninput="onBranchDisplay('${n.id}',${i},this.value)" onblur="renderAfterEdit()">
+            ${err&&touched?`<div class="field-err">This field is required</div>`
+              :err?`<div class="field-hint">Not set yet — neutral until you touch it. The journey readiness list will name it on save.</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+      <button class="add-branch" onclick="addBranch('${n.id}')">+ Add branch</button>`;
+  }
+  let body=(block.fields||[]).map(f=>renderField(n,st,f)).join('');
+  if(block.schemaLink) body+=`<button class="schema-link" onclick="openSchemaModal()">${I.code} Schema editor</button>`;
+  return body;
+}
+function renderField(n, st, f){
+  if(f.kind==='stepper-row'){
+    return `<div class="stepper-row">${f.steppers.map(s=>`
+      <div class="stepper"><div class="field"><label>${esc(s.label)}${s.labelNote?` <span class="lbl-note">${esc(s.labelNote)}</span>`:''}</label>
+        <div class="stp-box">
+          <input value="${s.value}" inputmode="numeric" data-stepper="${s.k}" oninput="onStepperInput('${s.k}',this.value)">
+          <div class="stp-btns">
+            <button title="Increase" onclick="bumpStepper('${s.k}',1)">▲</button>
+            <button title="Decrease" onclick="bumpStepper('${s.k}',-1)">▼</button>
+          </div>
+        </div></div></div>`).join('')}</div>`;
+  }
+  const err=f.validate?f.validate(String(f.value??'')):null;
+  const touched=st.touched.has(f.k);
+  const showErr=err&&touched;
+  const label=`<label>${esc(f.label)}${f.labelNote?` <span class="lbl-note">${esc(f.labelNote)}</span>`:''}${f.required?` <span class="lbl-req">· required</span>`:''}</label>`;
+  const hintHtml=showErr?`<div class="field-err">${esc(err)}</div>`
+    :(f.required&&err&&!touched)?`<div class="field-hint">Not set yet — neutral until you touch it.</div>`
+    :f.hint?`<div class="field-hint">${esc(f.hint)}</div>`:'';
+  if(f.kind==='expr'){
+    return `<div class="field ${showErr?'invalid':''}" data-field="${f.k}">${label}
+      <div class="exprfield">
+        <span class="expr-prefix" title="Expression">${I.code}</span>
+        <input class="expr-value" value="${esc(f.value)}" placeholder="${esc(f.placeholder||'')}"
+          oninput="onFieldInput('${f.k}',this.value)" onblur="renderAfterEdit()">
+        <button class="expr-edit" title="Open expression editor" onclick="openExprModal('${f.k}','${esc(f.label)}')">${I.pencil}</button>
+      </div>${hintHtml}</div>`;
+  }
+  if(f.kind==='select'){
+    return `<div class="field" data-field="${f.k}">${label}
+      <select class="tsselect" onchange="onFieldInput('${f.k}',this.value);toast('Saved')">
+        ${f.options.map(o=>`<option ${o===f.value?'selected':''}>${esc(o)}</option>`).join('')}
+      </select>${hintHtml}</div>`;
+  }
+  if(f.kind==='ec'){
+    const options=EC_OPTIONS[f.ecType]||[];
+    return `<div class="field ${showErr?'invalid':''}" data-field="${f.k}">${label}
+      <div class="ec-row">
+        <select class="tsselect" onchange="onFieldInput('${f.k}',this.value);renderAfterEdit()">
+          <option value="" ${!f.value?'selected':''} disabled>Select a connection…</option>
+          ${options.map(o=>`<option value="${esc(o.id)}" ${o.id===f.value?'selected':''} ${o.enabled?'':'disabled'}>${esc(o.name)}${o.enabled?'':' (disabled)'}</option>`).join('')}
+        </select>
+        <button class="ec-create-btn" type="button" onclick="openEcModal('${n.id}','${f.k}','${f.ecType}')">+ Create new</button>
+      </div>
+      ${hintHtml}</div>`;
+  }
+  return `<div class="field ${showErr?'invalid':''}" data-field="${f.k}">${label}
+    <input class="tsinput" value="${esc(f.value)}" placeholder="${esc(f.placeholder||'')}"
+      oninput="onFieldInput('${f.k}',this.value)" onblur="renderAfterEdit()">
+    ${hintHtml}</div>`;
+}
+
+/* field plumbing */
+function findField(nodeId,key){
+  for(const {f} of fieldsOf(nodeId)) if(f.k===key) return f;
+  return null;
+}
+function onFieldInput(key,value){
+  const f=findField(currentStep,key); if(!f) return;
+  f.value=value; S(currentStep).touched.add(key); markDirty();
+}
+function onStepperInput(key,value){
+  const f=findField(currentStep,key); if(!f) return;
+  const v=parseInt(value,10); if(!isNaN(v)) f.value=Math.min(f.max??99,Math.max(f.min??0,v));
+  S(currentStep).touched.add(key); markDirty();
+}
+function bumpStepper(key,d){
+  const f=findField(currentStep,key); if(!f) return;
+  f.value=Math.min(f.max??99,Math.max(f.min??0,(parseInt(f.value,10)||0)+d));
+  S(currentStep).touched.add(key); markDirty();
+  const inp=document.querySelector(`[data-stepper="${key}"]`);
+  if(inp) inp.value=f.value;
+}
+function onTitleOverride(v){
+  const st=S(currentStep); st.titleOverride=v;
+  const node=NODES[currentStep];
+  if(!node.baseTitle) node.baseTitle=node.title;
+  node.title=v.trim()||node.baseTitle;
+  markDirty();
+  $('#spTitle').textContent=node.title;
+  const tEl=document.querySelector(`#node-${currentStep} .node-title`);
+  if(tEl) tEl.textContent=node.title;
+}
+function renderAfterEdit(){ renderPanel(); renderCanvas(); }
+function toggleSection(key){
+  const st=S(currentStep); st.collapsed[key]=!st.collapsed[key]; renderPanel();
+}
+function addBranch(nodeId){
+  const cb=CUSTOM_BRANCHES[nodeId]; if(!cb) return;
+  const idx=cb.items.length+1;
+  cb.items.push({id:'branch_'+idx, display:''});
+  NODES[nodeId].branches.push({id:'branch_'+idx, label:'branch '+idx, type:'plain'});
+  markDirty();
+  renderAfterEdit();
+}
+function removeBranch(nodeId,i){
+  const cb=CUSTOM_BRANCHES[nodeId];
+  const removed=cb.items.splice(i,1)[0];
+  NODES[nodeId].branches=NODES[nodeId].branches.filter(b=>b.id!==removed.id);
+  markDirty();
+  renderAfterEdit();
+}
+function onBranchId(nodeId,i,v){
+  CUSTOM_BRANCHES[nodeId].items[i].id=v; markDirty();
+}
+function onBranchDisplay(nodeId,i,v){
+  const cb=CUSTOM_BRANCHES[nodeId];
+  cb.items[i].display=v;
+  S(nodeId).touched.add('cb-display-'+i);
+  markDirty();
+  const branch=NODES[nodeId].branches.find(b=>b.id===cb.items[i].id);
+  if(branch){ branch.label=v.trim()||branch.id; }
+}
+
+/* ---------- View mode ---------- */
+function renderViewMode(n){
+  const model=PANELS[n.id];
+  let html='';
+  const rowsByGroup=new Map(FIELD_GROUP_ORDER.map(g=>[g,[]]));
+  (model?.blocks||[]).forEach(block=>{
+    const rows=rowsByGroup.get(block.group);
+    if(block.kind==='methods'){
+      block.methods.forEach(m=>rows.push({l:m.label, v:m.on?'Enabled':'Disabled'}));
+    } else if(block.kind==='branches' || block.kind==='summary'){
+      return; // branches get their own "Branching" card below, built from n.branches
+    } else {
+      (block.fields||[]).forEach(f=>{
+        if(f.kind==='stepper-row'){ f.steppers.forEach(s=>rows.push({l:s.label, v:String(s.value)})); return; }
+        const v=String(f.value??'').trim();
+        if(!v) return;
+        rows.push({l:f.label, v, ref:f.kind==='expr'&&BARE_REF.test(v)});
+      });
+    }
+  });
+  const groups=FIELD_GROUP_ORDER
+    .filter(g=>g!=='Branching' && rowsByGroup.get(g).length)
+    .map(g=>({title:g, rows:rowsByGroup.get(g)}));
+  groups.forEach(g=>{
+    html+=`<div class="viewgroup"><div class="viewgroup-title">${esc(g.title)}</div><div class="viewrows">`+
+      g.rows.map(r=>`<div class="viewrow"><span class="vl">${esc(r.l)}</span><span class="vv">${r.ref?`<span class="refchip">${I.link}${esc(r.v)}</span>`:esc(r.v)}</span></div>`).join('')+
+      `</div></div>`;
+  });
+  if(n.branches.length){
+    html+=`<div class="viewgroup"><div class="viewgroup-title">Branching</div><div class="viewrows">
+      <div class="viewrow"><span class="vl">Branches</span><span class="vv">${esc(n.branches.map(b=>b.label).join(', '))}</span></div>
+    </div></div>`;
+  }
+  if(!groups.length&&!n.branches.length){
+    html+=`<div class="view-empty">Nothing configured yet — this step runs with its defaults.</div>`;
+  }
+  return html;
+}
+
+/* ---------- Preview ---------- */
+function previewContent(n){
+  if(n.id==='login-form'||n.id==='get-info'){
+    return `<div class="pv-h">Welcome back</div><div class="pv-sub">Choose how to sign in</div>
+      <div class="pv-cta">Sign in with a passkey</div><div class="pv-or">or</div>
+      <div class="pv-input">Username</div><div class="pv-input">Password</div>
+      <div class="pv-cta ghost">Continue with password</div>`;
+  }
+  if(n.id==='passkeys-auth'){
+    return `<div class="pv-h">Use your passkey</div>
+      <div class="pv-passkey">${I.passkey}<div class="pv-sub">Follow your browser or device prompt to continue</div></div>
+      <div class="pv-cta">Continue</div><div class="pv-link">Try another way</div>`;
+  }
+  if(n.id==='email-validation'){
+    return `<div class="pv-h">Check your email</div><div class="pv-sub">We sent a 6-digit code to your inbox</div>
+      <div class="pv-codes">${'<div class="pv-code">•</div>'.repeat(6)}</div>
+      <div class="pv-cta">Verify</div><div class="pv-link">Resend code</div>`;
+  }
+  return `<div class="pv-h">${esc(n.title)}</div>
+    <div class="pv-input">Username</div><div class="pv-input">Password</div><div class="pv-cta">Continue</div>`;
+}
+function renderPreview(n){
+  return `<div class="pv-toggle">
+      <button class="pv-dev ${previewDevice==='desktop'?'on':''}" onclick="setPreviewDevice('desktop')">Desktop</button>
+      <button class="pv-dev ${previewDevice==='mobile'?'on':''}" onclick="setPreviewDevice('mobile')">Mobile</button>
+    </div>
+    <div class="pv-frame">
+      <div class="pv-note">Rendered by the same sso-hosted preview surface the Login form editor uses — available on every user-facing step.</div>
+      <div class="pv-screen ${previewDevice==='mobile'?'mobile':''}">${previewContent(n)}</div>
+    </div>
+    <button class="pv-exit" onclick="togglePreview()">Exit preview</button>`;
+}
+
+/* =====================================================================
+   Save → readiness list → Publish
+   ===================================================================== */
+function onSaveClick(){
+  // Publish is only reachable via this same button once a Save has already
+  // found zero errors (savedValid). This click IS the publish action.
+  if(savedValid){
+    publishedFlash=true; refreshSaveArea();
+    toast('Journey published');
+    publishedFlashTimer=setTimeout(()=>{ publishedFlash=false; refreshSaveArea(); },2400);
+    return;
+  }
+  // Otherwise this click is a Save attempt: it's the ONLY thing that can set
+  // savedValid=true. Fixing every field without clicking Save must never
+  // surface Publish on its own — that was the exact bug reported.
+  const errors=allErrors();
+  savedOnce=true;
+  savedValid = errors.length===0;
+  toast('Saved');
+  refreshSaveArea();
+}
+function refreshSaveArea(){
+  const btn=$('#saveBtn'), list=$('#readiness');
+  if(!btn||!list) return;
+  const errors=allErrors();
+  if(publishedFlash){ btn.textContent='Published ✓'; btn.className='btn-save published'; }
+  else if(savedValid){ btn.textContent='Publish'; btn.className='btn-save publish'; }
+  else if(!dirty && errors.length===0){ btn.textContent='Save'; btn.className='btn-save idle'; }
+  else { btn.textContent='Save'; btn.className='btn-save'; }
+
+  if(!savedOnce || errors.length===0){ list.classList.remove('show'); return; }
+  window._readinessErrors=errors;
+  list.innerHTML=`
+    <div class="readiness-head"><span>${errors.length} field${errors.length>1?'s':''} blocking publish</span>
+      <button onclick="savedOnce=false;refreshSaveArea()">Hide</button></div>
+    ${errors.map((e,i)=>`
+      <button class="readiness-item" data-testid="readiness-item" onclick="jumpToError(${i})">
+        <span><span class="readiness-step">${esc(NODES[e.nodeId].title)}</span>
+        <span class="readiness-field" style="display:block">${esc(e.label)} — ${esc(e.message)}</span></span>
+        <span style="color:var(--black40)">›</span>
+      </button>`).join('')}`;
+  list.classList.add('show');
+  positionReadiness();
+}
+/* #readiness lives as a direct child of .canvas-head (see the comment on its
+   CSS rule for why), so it can't anchor to the Save button via CSS alone —
+   compute its on-screen position against the button's live rect every time
+   it's shown, so it stays correctly placed regardless of toolbar width,
+   sidepanel open/closed state, or window resize. */
+function positionReadiness(){
+  const list=$('#readiness'), btn=$('#saveBtn'), head=$('.canvas-head');
+  if(!list||!btn||!head) return;
+  const b=btn.getBoundingClientRect(), h=head.getBoundingClientRect();
+  list.style.top=(b.bottom-h.top+8)+'px';
+  list.style.right=(h.right-b.right)+'px';
+}
+function jumpToError(i){
+  const e=window._readinessErrors[i];
+  currentStep=e.nodeId;
+  const st=S(e.nodeId);
+  st.mode='edit'; noteEnteredEditMode();
+  st.touched.add(e.key);
+  st.collapsed[e.group]=false;
+  previewOpen=false;
+  $('#sidepanel').classList.remove('closed');
+  renderCanvas();
+  renderPanel(e.key);
+}
+
+/* =====================================================================
+   Add step — right slide-over, product taxonomy
+   ===================================================================== */
+const AS_CATS = [
+  { name:'Featured', icon:I.star },
+  { name:'User Interactions', icon:I.people },
+  { name:'Flow Controllers', icon:I.flow },
+  { name:'Authentication', icon:I.keyuser },
+  { name:'Fraud Prevention', icon:I.shield },
+  { name:'Identity Verification', icon:I.idcard },
+  { name:'User Management', icon:I.usercog },
+  { name:'Session Management', icon:I.session },
+  { name:'Data Processing', icon:I.db },
+  { name:'Connectors & Code', icon:I.connect },
+];
+const STEP_LIBRARY = {
+  'Featured': [
+    {t:'Delete Mobile PIN (Deprecated)',d:'Delete a PIN code registered on the device.',deprecated:true,group:'AUTHENTICATION'},
+    {t:'Face Authentication',d:'Authenticate user using face biometric comparison.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain'],group:'AUTHENTICATION'},
+    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'PingOne OIDC Authentication',d:'Authenticate a user with PingOne using OIDC redirect flow.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'Register Face',d:'Register face biometric reference for user authentication.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'Register Passkeys',d:'Register a passkey for a user.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+  ],
+  'User Interactions': [
+    {t:'Collect Information',d:'Collect information from users.',userFacing:true,branches:['plain']},
+    {t:'Display Information',d:'Display information to users.',userFacing:true,branches:[]},
+    {t:'Web to Mobile Transaction Signing',d:'Sign a transaction on mobile initiated from web.',userFacing:true,branches:['success','failure']},
+  ],
+  'Flow Controllers': [
+    {t:'Condition',d:'Check if a condition is met.',branches:['success','failure']},
+    {t:'Match Case',d:'Choose a branch based on an expression.',branches:[]},
+    {t:'While Loop',d:'Repeat steps while a condition is met.',branches:[]},
+    {t:'Complete Journey',d:'Flag this journey as successfully completed.',branches:[]},
+    {t:'Reject Access',d:'Complete the journey with a rejection.',branches:[]},
+  ],
+  'Authentication': [
+    {t:'Email OTP Authentication',d:'Require user to authenticate through a one-time email passcode.',userFacing:true,branches:['success','failure']},
+    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain']},
+    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure']},
+    {t:'Password Authentication',d:'Authenticate a user with their password.',userFacing:true,branches:['success','failure']},
+    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure']},
+    {t:'TOTP Authentication',d:'Authenticate a user through a time-based one-time passcode.',userFacing:true,branches:['success','failure']},
+  ],
+  'Fraud Prevention': [
+    {t:'Risk Recommendation',d:'Branch the journey by risk recommendation on user activity.',branches:['success','failure','plain']},
+    {t:'Evaluate Transaction',d:'Evaluate a transaction for fraud signals.',branches:[]},
+  ],
+  'Identity Verification': [
+    {t:'Document Verification (API)',d:'Verify identity by comparing a validated ID to a selfie.',userFacing:true,branches:['success','failure']},
+    {t:'Selfie Acquisition',d:'Capture a selfie for verification.',userFacing:true,branches:['success','failure']},
+  ],
+  'User Management': [
+    {t:'Create User',d:'Add a new user.',branches:[]},
+    {t:'Get User Identifiers',d:'Fetch a user\'s registered identifiers.',branches:['success','failure']},
+    {t:'Update User',d:'Update an existing user.',branches:[]},
+    {t:'Register Device',d:'Register a device to a user (Cryptobinding).',branches:[]},
+  ],
+  'Session Management': [
+    {t:'Validate Token',d:'Validate a token, abort the journey upon failure.',branches:[]},
+    {t:'Has Valid SSO Session',d:'Branch on whether a valid SSO session exists.',branches:['success','failure']},
+    {t:'Enrich SSO Session',d:'Enrich an SSO session.',branches:[]},
+  ],
+  'Data Processing': [
+    {t:'Set Temporary Variables',d:'Store values in variables for later use.',branches:[]},
+    {t:'Provide JSON Data',d:'Send expression JSON data for processing.',branches:[]},
+  ],
+  'Connectors & Code': [
+    {t:'Invoke a Web Service',d:'Invoke an external web service.',branches:[]},
+    {t:'Invoke External IDP',d:'Authenticate against an external identity provider.',userFacing:true,branches:['success','failure']},
+    {t:'Send Email',d:'Send an email through a configured connection.',branches:[]},
+  ],
+};
+const PINNED = ['Login Form','Passkeys Authentication'];
+
+let pendingAttach=null, asTab='all', asCat='Featured', nodeIdSeq=1;
+/* Rendered rows reference their step data by index into this array rather
+   than inlining JSON into an onclick attribute — a description containing
+   an apostrophe (e.g. "Fetch a user's registered identifiers.") would break
+   out of the attribute and throw a syntax error, silently corrupting the
+   rest of the drawer's click handling. */
+let asRenderedItems=[];
+function openAddStep(fromId, branchId){
+  pendingAttach = fromId ? {fromId, branchId} : null;
+  asTab='all'; asCat='Featured';
+  $('#addStepMask').classList.add('show');
+  $('#addStep').classList.add('show');
+  $('#asSearch').value='';
+  renderAsCats(); renderAsSteps();
+}
+function closeAddStep(){
+  $('#addStepMask').classList.remove('show');
+  $('#addStep').classList.remove('show');
+}
+function setAsTab(t){
+  asTab=t;
+  $('#asTabAll').classList.toggle('on',t==='all');
+  $('#asTabPinned').classList.toggle('on',t==='pinned');
+  renderAsSteps();
+}
+function renderAsCats(){
+  $('#asCats').innerHTML=AS_CATS.map(c=>`
+    <button class="as-cat ${c.name===asCat?'on':''}" onclick="selectAsCat('${c.name}')">${c.icon}${c.name}</button>`).join('');
+}
+function selectAsCat(name){ asCat=name; renderAsCats(); renderAsSteps(); }
+function stepRow(s, cat, index){
+  const dep=s.deprecated?' deprecated':'';
+  const handler=s.deprecated?'' :`data-step-index="${index}"`;
+  return `<button class="as-stepitem${dep}" ${handler}>
+    <span class="t">${esc(s.t)}</span><span class="d" style="display:block">${esc(s.d)}</span></button>`;
+}
+function renderAsSteps(){
+  const q=($('#asSearch').value||'').toLowerCase();
+  let items;
+  if(q){
+    items=[];
+    Object.entries(STEP_LIBRARY).forEach(([cat,steps])=>{
+      if(cat==='Featured') return; // avoid dupes in search
+      steps.forEach(s=>{ if(s.t.toLowerCase().includes(q)) items.push({s,cat}); });
+    });
+  } else if(asTab==='pinned'){
+    items=[];
+    Object.entries(STEP_LIBRARY).forEach(([cat,steps])=>{
+      if(cat==='Featured') return;
+      steps.forEach(s=>{ if(PINNED.includes(s.t)) items.push({s,cat}); });
+    });
+  } else {
+    items=(STEP_LIBRARY[asCat]||[]).map(s=>({s,cat:asCat}));
+  }
+  asRenderedItems=items;
+  if(!items.length){
+    $('#asSteps').innerHTML=`<div class="as-group-label">No steps match.</div>`;
+    return;
+  }
+  // group label: for Featured, items carry their own group; otherwise category
+  let html='', lastGroup='';
+  items.forEach(({s,cat},i)=>{
+    const group=(s.group||cat).toUpperCase();
+    if(group!==lastGroup){ html+=`<div class="as-group-label">${esc(group)}</div>`; lastGroup=group; }
+    html+=stepRow(s,cat,i);
+  });
+  $('#asSteps').innerHTML=html;
+}
+$('#asSteps').addEventListener('click',(e)=>{
+  const row=e.target.closest('.as-stepitem[data-step-index]');
+  if(!row) return;
+  const {s,cat}=asRenderedItems[Number(row.dataset.stepIndex)];
+  insertStep(s,cat);
+});
+function filterSteps(){ renderAsSteps(); }
+function insertStep(s,cat){
+  s={...s,cat};
+  const newId='n'+(nodeIdSeq++);
+  let x=520, y=640;
+  if(pendingAttach && NODES[pendingAttach.fromId]){
+    x=NODES[pendingAttach.fromId].x+340;
+    y=NODES[pendingAttach.fromId].y+140;
+  }
+  NODES[newId]={id:newId,title:s.t,cat:s.userFacing?'user':'server',userFacing:!!s.userFacing,desc:s.d,x,y,
+    branches:(s.branches||[]).map(t=>({id:t+'-'+newId,label:t==='success'?'Success':t==='failure'?'Failure':'Next',type:t}))};
+  if(pendingAttach){
+    // Wire from the exact branch the "+" was clicked on — not branches[0],
+    // which was wrong for any node with more than one branch — and replace
+    // rather than add, in case that branch was already (mis)wired.
+    const branchId=pendingAttach.branchId || NODES[pendingAttach.fromId].branches[0]?.id;
+    for(let i=EDGES.length-1;i>=0;i--){
+      const ed=EDGES[i];
+      if(ed.from[0]===pendingAttach.fromId && ed.from[1]===branchId) EDGES.splice(i,1);
+    }
+    EDGES.push({from:[pendingAttach.fromId, branchId], to:newId});
+  }
+  markDirty();
+  closeAddStep();
+  renderCanvas();
+  openPanel(newId,'view');
+}
+
+/* =====================================================================
+   Modals
+   ===================================================================== */
+let exprTargetKey=null;
+function openExprModal(key,label){
+  exprTargetKey=key;
+  $('#exprTitle').textContent=label+' — expression';
+  $('#exprText').value=String(findField(currentStep,key)?.value??'');
+  $('#exprOverlay').classList.add('show');
+}
+function closeExprModal(){ $('#exprOverlay').classList.remove('show'); }
+function saveExprModal(){
+  const f=findField(currentStep,exprTargetKey);
+  if(f){ f.value=$('#exprText').value.trim(); S(currentStep).touched.add(exprTargetKey); markDirty(); }
+  closeExprModal(); renderAfterEdit();
+}
+function openSchemaModal(){ $('#schemaOverlay').classList.add('show'); }
+function closeSchemaModal(){ $('#schemaOverlay').classList.remove('show'); }
+
+/* =====================================================================
+   Inline External Connection creation — scoped, minimal-config only
+   (§4/R6.1: not the full Integration Hub connector form; nested required
+   entities are NOT created recursively — see the link-out note below).
+   ===================================================================== */
+const EC_TYPE_META = {
+  sms: { category:'Communication', type:'Custom SMS Provider', uriPlaceholder:'https://api.sms-provider.com/send' },
+};
+let ecModalTarget=null;
+function openEcModal(nodeId, fieldKey, ecType){
+  ecModalTarget={nodeId,fieldKey,ecType};
+  const meta=EC_TYPE_META[ecType]||{category:'',type:ecType};
+  $('#ecModalTitle').textContent=`New ${meta.type}`;
+  $('#ecCategory').value=meta.category;
+  $('#ecType').value=meta.type;
+  $('#ecName').value='';
+  $('#ecUri').value='';
+  $('#ecUri').placeholder=meta.uriPlaceholder||'';
+  $('#ecBody').value='';
+  $('#ecCreds').value='';
+  $('#ecMethod').value='POST';
+  $('#ecAuthType').value='None';
+  $('#ecResponseFormat').value='String';
+  $('#ecFallback').value='Success';
+  updateEcCreateEnabled();
+  $('#ecOverlay').classList.add('show');
+}
+function closeEcModal(){ $('#ecOverlay').classList.remove('show'); ecModalTarget=null; }
+function updateEcCreateEnabled(){
+  const ready = $('#ecName').value.trim() && $('#ecUri').value.trim() && $('#ecBody').value.trim() && $('#ecCreds').value.trim();
+  $('#ecCreateBtn').disabled = !ready;
+}
+function navigateToExternalConnections(){
+  toast('In the product this opens the Integration Hub — inline creation is deliberately not recursive (v1 constraint).');
+}
+function submitEcModal(){
+  if(!ecModalTarget) return;
+  const { nodeId, fieldKey, ecType } = ecModalTarget;
+  const name=$('#ecName').value.trim();
+  if(!name) return;
+  const id='ec-'+Date.now()+'-'+Math.round(Math.random()*1000);
+  if(!EC_OPTIONS[ecType]) EC_OPTIONS[ecType]=[];
+  EC_OPTIONS[ecType].push({ id, name, enabled:true });
+  const f=findField(nodeId,fieldKey);
+  if(f){ f.value=id; S(nodeId).touched.add(fieldKey); }
+  closeEcModal();
+  markDirty();
+  if(currentStep===nodeId) renderPanel();
+  toast(`${name} connected`);
+}
+
+/* ---------- boot ---------- */
+renderCanvas();
+applyTransform();
+window.addEventListener('resize',drawEdges);

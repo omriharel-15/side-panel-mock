@@ -34,7 +34,9 @@ const I = {
   usercog:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="18" cy="8" r="2.4"/><path d="M18 4.5V6M18 10v1.5M21 8h-1.5M16.5 8H15"/></svg>',
   session:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M8 9l2.5 2.5L15 7"/></svg>',
   db:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5V18.5c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8V5.5"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/></svg>',
-  connect:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 21v-4a2 2 0 0 1 2-2h4M21 9h-4a2 2 0 0 1-2-2V3M3 15h4a2 2 0 0 1 2 2v4"/></svg>'
+  connect:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 21v-4a2 2 0 0 1 2-2h4M21 9h-4a2 2 0 0 1-2-2V3M3 15h4a2 2 0 0 1 2 2v4"/></svg>',
+  sparkle:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2c.4 3.2 1 4.8 2.1 5.9C14.2 9 15.8 9.6 19 10c-3.2.4-4.8 1-5.9 2.1C11.9 13.2 11.3 14.8 11 18c-.4-3.2-1-4.8-2.1-5.9C7.8 11 6.2 10.4 3 10c3.2-.4 4.8-1 5.9-2.1C10 6.8 10.6 5.2 11 2Z"/><path d="M19 13.5c.2 1.3.5 2 1 2.5.5.5 1.2.8 2.5 1-1.3.2-2 .5-2.5 1-.5.5-.8 1.2-1 2.5-.2-1.3-.5-2-1-2.5-.5-.5-1.2-.8-2.5-1 1.3-.2 2-.5 2.5-1 .5-.5.8-1.2 1-2.5Z"/></svg>',
+  arrowRight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
 };
 
 /* ---------- categories: prod step-icons.service (cyan user / mustard server) ---------- */
@@ -265,6 +267,25 @@ function toast(msg){
   clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
 }
 const BARE_REF = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)+$/;
+/* Fields default to expression mode when the pre-filled value already reads
+   as a variable reference or an object/array literal — everything else
+   (a plain sentence, an empty required field) defaults to plain string mode.
+   Mode is cached on the field object itself so it stays stable across renders
+   and survives the user toggling it by hand. */
+function fieldExprMode(f){
+  if(f.kind!=='expr') return null;
+  if(f.mode==null){
+    const v=String(f.value??'').trim();
+    f.mode=(BARE_REF.test(v)||/^[{[]/.test(v))?'expr':'string';
+  }
+  return f.mode;
+}
+function toggleExprMode(key){
+  const f=findField(currentStep,key); if(!f) return;
+  f.mode=f.mode==='expr'?'string':'expr';
+  markDirty();
+  renderAfterEdit();
+}
 /* `dirty` only tracks whether the journey has EVER been touched (drives the
    idle/pale Save styling before the first edit — but only when there are also
    zero outstanding errors; a journey that ships with pre-existing errors must
@@ -671,10 +692,18 @@ function renderPanel(focusKey){
   $('#modeEdit').classList.toggle('on',!previewOpen&&st.mode==='edit');
   const body=$('#spBody');
   body.innerHTML = previewOpen ? renderPreview(n) : (st.mode==='view'?renderViewMode(n):renderEditMode(n,st));
+  // size every expression textarea to its current content on render (typing
+  // triggers this too, via autoGrowExpr in the oninput handler) — otherwise
+  // a pre-filled long expression would show clipped at 32px until touched.
+  body.querySelectorAll('.expr-value').forEach(autoGrowExpr);
   if(focusKey){
     const el=body.querySelector(`[data-field="${focusKey}"]`);
-    if(el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'center'}); const inp=el.querySelector('input,select'); inp&&inp.focus(); }
+    if(el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'center'}); const inp=el.querySelector('input,select,textarea'); inp&&inp.focus(); }
   }
+}
+function autoGrowExpr(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,150)+'px';
 }
 
 /* ---------- Edit mode (product section cards) ---------- */
@@ -781,12 +810,25 @@ function renderField(n, st, f){
     :(f.required&&err&&!touched)?`<div class="field-hint">Not set yet — neutral until you touch it.</div>`
     :f.hint?`<div class="field-hint">${esc(f.hint)}</div>`:'';
   if(f.kind==='expr'){
+    // A plain <input> can never wrap text or accept Enter as a newline —
+    // both are required for "long expressions stay readable". <textarea>
+    // with JS auto-grow (autoGrowExpr) gets both, up to the CSS max-height.
+    // Every expr-capable field can be toggled between a plain string and a
+    // real expression — the toggle button is always in the same place so
+    // the field "looks the same" either way; only string-only fields (kind
+    // 'text', e.g. output_var) skip this entirely and stay a bare input.
+    const isExpr=fieldExprMode(f)==='expr';
     return `<div class="field ${showErr?'invalid':''}" data-field="${f.k}">${label}
       <div class="exprfield">
-        <span class="expr-prefix" title="Expression">${I.code}</span>
-        <input class="expr-value" value="${esc(f.value)}" placeholder="${esc(f.placeholder||'')}"
-          oninput="onFieldInput('${f.k}',this.value)" onblur="renderAfterEdit()">
-        <button class="expr-edit" title="Open expression editor" onclick="openExprModal('${f.k}','${esc(f.label)}')">${I.pencil}</button>
+        <button type="button" class="expr-toggle ${isExpr?'active':''}"
+          title="${isExpr?'Expression — click to switch to plain text':'Plain text — click to switch to an expression'}"
+          onclick="toggleExprMode('${f.k}')">${I.code}</button>
+        ${isExpr
+          ? `<textarea class="expr-value" rows="1" placeholder="${esc(f.placeholder||'')}"
+               oninput="onFieldInput('${f.k}',this.value);autoGrowExpr(this)" onblur="renderAfterEdit()">${esc(f.value)}</textarea>
+             <button class="expr-edit" title="Open expression editor" onclick="openExprModal('${f.k}','${esc(f.label)}')">${I.sparkle}<span>Edit</span></button>`
+          : `<input class="expr-value-str" value="${esc(f.value)}" placeholder="${esc(f.placeholder||'')}"
+               oninput="onFieldInput('${f.k}',this.value)" onblur="renderAfterEdit()">`}
       </div>${hintHtml}</div>`;
   }
   if(f.kind==='select'){
@@ -891,7 +933,7 @@ function renderViewMode(n){
         if(f.kind==='stepper-row'){ f.steppers.forEach(s=>rows.push({l:s.label, v:String(s.value)})); return; }
         const v=String(f.value??'').trim();
         if(!v) return;
-        rows.push({l:f.label, v, ref:f.kind==='expr'&&BARE_REF.test(v)});
+        rows.push({l:f.label, v, ref:fieldExprMode(f)==='expr'&&BARE_REF.test(v)});
       });
     }
   });
@@ -1203,13 +1245,123 @@ function openExprModal(key,label){
   exprTargetKey=key;
   $('#exprTitle').textContent=label+' — expression';
   $('#exprText').value=String(findField(currentStep,key)?.value??'');
+  $('#sparkAskIcon').innerHTML=I.sparkle;
+  $('#sparkPrompt').value='';
+  $('.spark-ask-submit').innerHTML=I.arrowRight;
+  $('.expr-copy-btn').innerHTML=I.clone;
+  $('.spark-thinking-icon').innerHTML=I.sparkle;
+  $('#sparkThinking').classList.remove('show');
+  clearTimeout(sparkTimeout); sparkBusy=false;
+  $('#sparkPrompt').disabled=false;
+  renderSparkSuggestions();
+  updateExprGutter();
   $('#exprOverlay').classList.add('show');
 }
-function closeExprModal(){ $('#exprOverlay').classList.remove('show'); }
+function closeExprModal(){
+  clearTimeout(sparkTimeout); sparkBusy=false;
+  $('#exprOverlay').classList.remove('show');
+}
 function saveExprModal(){
   const f=findField(currentStep,exprTargetKey);
   if(f){ f.value=$('#exprText').value.trim(); S(currentStep).touched.add(exprTargetKey); markDirty(); }
   closeExprModal(); renderAfterEdit();
+}
+function updateExprGutter(){
+  const ta=$('#exprText');
+  const lines=(ta.value.match(/\n/g)||[]).length+1;
+  let html='';
+  for(let i=1;i<=lines;i++) html+=`<div>${i}</div>`;
+  $('#exprGutter').innerHTML=html;
+  $('#exprGutter').scrollTop=ta.scrollTop;
+}
+function copyExprCode(){
+  const text=$('#exprText').value;
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(()=>{});
+  toast('Copied');
+}
+function openFiddleStub(){ toast('Opens the Expression Fiddle in the real product — not wired in this mock.'); }
+function openDocsStub(){ toast('Opens the AuthScript docs in the real product — not wired in this mock.'); }
+
+/* ---------- Spark (mocked) ----------
+   Real Spark can suggest AuthScript but is known to hallucinate namespace
+   members (see authscript.md) — every entry here is hand-picked to actually
+   be plausible/valid against the documented @-namespaces. Entries with a
+   `match` are real field/expression pairs Omri supplied — when the modal
+   opens on that exact (node, field), that suggestion is pinned to the top;
+   everywhere else it's just part of the general pool. The three original
+   generic examples stay in the pool too. */
+const SPARK_LIBRARY=[
+  { match:{node:'password-auth',field:'password'},
+    label:"Get the password the user just submitted from the client request",
+    snippet:'@policy.request().params.current_password' },
+  { label:"Get the external user ID for the user being registered",
+    snippet:'@policy.userTokens().external_user_id' },
+  { label:"Get the new password the user is setting from the client request",
+    snippet:'@policy.request().params.new_password' },
+  { label:"Safely decrypt the session token from the request, defaulting to empty if it's missing or invalid",
+    snippet:
+`@policy.request().params.session_token
+  ? (try @crypto.verifyAndDecryptExternalToken(@policy.request().params.session_token, "session_management_key", "db", "session_management_key", "db") catch {})
+  : {}` },
+  { label:"Pull the access token out of the session token object",
+    snippet:'session_token["access_token"]' },
+  { label:"Check if the user's browser is Chrome",
+    snippet:'@std.contains(userAgent, `Chrome`)' },
+  { label:'Give me an example of code I can use here',
+    snippet:
+`let email = @policy.userContext().email,
+    now = @time().nowISO
+return \`User \${email} reached this step at \${now}\`` },
+  { label:'Provide code to take an input object, and copy all keys into a target object with encrypted values.',
+    snippet:
+`let keys = @std.keys(inputObject)
+return @std.reduce(
+  keys,
+  (target, key) => @std.kv(target, key, @crypto.aesEncrypt(@strings.toJson(inputObject[key]), "encryption-key")),
+  {}
+)` },
+  { label:'How can I generate a random string of a given length and a set of characters?',
+    snippet:
+`let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    length = 12,
+    indices = @std.map([0,1,2,3,4,5,6,7,8,9,10,11], (i) => @math.round(@math.random() * (@strings.length(chars) - 1)))
+return @std.reduce(indices, (acc, idx) => acc + @strings.substring(chars, idx, idx + 1), "")` },
+];
+let sparkBusy=false, sparkTimeout=null, currentSparkSuggestions=[];
+function sparkSuggestionsFor(nodeId,fieldKey){
+  const matched=[], rest=[];
+  SPARK_LIBRARY.forEach(s=>{
+    (s.match && s.match.node===nodeId && s.match.field===fieldKey ? matched : rest).push(s);
+  });
+  return matched.concat(rest);
+}
+function renderSparkSuggestions(){
+  currentSparkSuggestions=sparkSuggestionsFor(currentStep,exprTargetKey);
+  $('#sparkSuggestions').innerHTML=currentSparkSuggestions.map((s,i)=>
+    `<button type="button" class="spark-suggestion" onclick="runSpark(${i})"><span>${esc(s.label)}</span>${I.arrowRight}</button>`
+  ).join('');
+}
+function submitSparkPrompt(){
+  const val=$('#sparkPrompt').value.trim();
+  if(!val||sparkBusy) return;
+  runSpark(null);
+}
+function runSpark(idx){
+  if(sparkBusy) return;
+  sparkBusy=true;
+  const snippet=(idx!=null?currentSparkSuggestions[idx]:currentSparkSuggestions[0]).snippet;
+  $('#sparkThinking').classList.add('show');
+  $('#sparkPrompt').disabled=true;
+  document.querySelectorAll('.spark-suggestion').forEach(b=>b.disabled=true);
+  sparkTimeout=setTimeout(()=>{
+    $('#exprText').value=snippet;
+    updateExprGutter();
+    $('#sparkThinking').classList.remove('show');
+    $('#sparkPrompt').disabled=false;
+    $('#sparkPrompt').value='';
+    document.querySelectorAll('.spark-suggestion').forEach(b=>b.disabled=false);
+    sparkBusy=false;
+  },2300);
 }
 function openSchemaModal(){ $('#schemaOverlay').classList.add('show'); }
 function closeSchemaModal(){ $('#schemaOverlay').classList.remove('show'); }

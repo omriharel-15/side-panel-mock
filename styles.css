@@ -272,16 +272,24 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 @keyframes flash{0%{background:#FFFBE6}100%{background:transparent}}
 @media (prefers-reduced-motion: reduce){.field.flash{animation:none}}
 
-/* expression input: separate </> box + mono value (product screenshot 3) */
+/* expression input: separate </> toggle + mono value (product screenshot 3) */
 .exprfield{display:flex;align-items:stretch;gap:0;border:1px solid var(--black20);border-radius:4px;overflow:hidden;background:var(--white)}
 .field.invalid .exprfield{border-color:var(--error)}
 .exprfield:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px #6981FF33}
-.expr-prefix{width:38px;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--black10);color:var(--black60);background:var(--white);flex:none}
-.expr-prefix svg{width:14px;height:14px}
-.expr-value{flex:1;border:none;padding:0 12px;height:32px;font-size:13px;font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--black);min-width:0;background:var(--white)}
+/* Solid and quiet: off looks like a plain divider icon, on is a filled TIP-purple
+   square — the same control in the same spot regardless of which mode the field is in. */
+.expr-toggle{width:38px;display:flex;align-items:center;justify-content:center;border:none;border-right:1px solid var(--black10);color:var(--black60);background:var(--white);flex:none}
+.expr-toggle svg{width:14px;height:14px}
+.expr-toggle:hover{color:var(--primary)}
+.expr-toggle.active{background:var(--primary);color:var(--white)}
+.expr-toggle.active:hover{background:var(--primary-110);color:var(--white)}
+.expr-value{flex:1;border:none;padding:8px 12px;min-height:32px;max-height:150px;font-size:13px;line-height:16px;font-family:ui-monospace,"SF Mono",Menlo,monospace;color:var(--black);min-width:0;background:var(--white);resize:none;overflow-y:auto;box-sizing:border-box}
 .expr-value:focus{outline:none}
-.expr-edit{border:none;background:none;color:var(--primary);display:flex;align-items:center;padding:0 10px}
-.expr-edit svg{width:13px;height:13px}
+.expr-value-str{flex:1;border:none;padding:0 12px;height:32px;font-size:14px;color:var(--black);min-width:0;background:var(--white)}
+.expr-value-str::placeholder{color:var(--black40)}
+.expr-value-str:focus{outline:none}
+.expr-edit{border:none;background:none;color:var(--primary);display:flex;align-items:center;gap:5px;padding:0 10px;font-size:12px;font-weight:600;flex:none}
+.expr-edit svg{width:14px;height:14px}
 .expr-edit:hover{color:var(--primary-110)}
 
 /* stepper row */
@@ -409,6 +417,52 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 .btn-primary{border:none;background:var(--primary);color:var(--white);border-radius:4px;padding:8px 16px;font-size:12px;font-weight:600}
 .btn-primary:hover{background:var(--primary-110)}
 .btn-primary:disabled{background:var(--black5);color:var(--black40);cursor:not-allowed}
+
+/* Expression editor — Spark AI ask/suggest column + a fake code editor
+   (line-number gutter over a plain textarea; a real Monaco instance is a
+   later, separate integration — see side-panel-demo-brief-draft.md). */
+.expr-modal{width:1000px;max-width:95vw}
+.expr-modal-body{display:flex;height:480px}
+.expr-spark-col{width:300px;flex:none;border-right:1px solid var(--black10);padding:18px;display:flex;flex-direction:column;gap:12px;background:var(--black1);min-height:0}
+.spark-ask{display:flex;align-items:center;gap:8px;border:1px solid var(--primary-40);border-radius:8px;padding:6px 6px 6px 10px;background:var(--white)}
+.spark-ask-icon{flex:none;display:flex;color:var(--primary)}
+.spark-ask-icon svg{width:16px;height:16px}
+.spark-ask input{flex:1;min-width:0;border:none;outline:none;font-size:13px;background:transparent;color:var(--black)}
+.spark-ask input::placeholder{color:var(--black40)}
+.spark-ask input:disabled{color:var(--black40)}
+.spark-ask-submit{width:26px;height:26px;flex:none;border:none;border-radius:6px;background:var(--ai-gradient);color:var(--white);display:flex;align-items:center;justify-content:center}
+.spark-ask-submit svg{width:14px;height:14px}
+.spark-ask-submit:hover{filter:brightness(1.08)}
+.spark-suggestions{display:flex;flex-direction:column;flex:1;min-height:0;gap:8px}
+.spark-suggest-title{font-size:12px;font-weight:600;color:var(--black60);margin:0;flex:none}
+#sparkSuggestions{display:flex;flex-direction:column;gap:8px;overflow-y:auto;flex:1;min-height:0;margin:0 -4px 0 0;padding-right:4px}
+.spark-suggestion{display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;border:1px solid var(--black10);border-radius:6px;padding:10px 12px;background:var(--white);font-size:12.5px;line-height:1.4;color:var(--black);flex:none}
+.spark-suggestion:hover{border-color:var(--primary)}
+.spark-suggestion:disabled{opacity:.5;cursor:default}
+.spark-suggestion svg{width:14px;height:14px;flex:none;color:var(--black40)}
+.expr-code-col{flex:1;min-width:0;padding:18px;display:flex;flex-direction:column}
+.expr-code-head{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--black60);margin-bottom:8px}
+.expr-copy-btn{width:22px;height:22px;flex:none;border:none;border-radius:5px;background:var(--black5);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.expr-copy-btn svg{width:12px;height:12px}
+.expr-copy-btn:hover{background:var(--primary-10)}
+.expr-fiddle-note{margin-left:auto;font-weight:400;color:var(--black40)}
+.expr-fiddle-note a{color:var(--primary);font-weight:600;text-decoration:none}
+.expr-fiddle-note a:hover{text-decoration:underline}
+.expr-code-wrap{position:relative;flex:1;display:flex;border:1px solid var(--black10);border-radius:6px;overflow:hidden;background:var(--black1)}
+.expr-code-gutter{flex:none;width:34px;background:var(--black5);color:var(--black40);font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;line-height:19px;text-align:right;padding:10px 6px 10px 0;user-select:none;overflow:hidden}
+.expr-modal .expr-code-area{flex:1;min-width:0;width:auto;min-height:0;border:none;resize:none;padding:10px 12px;margin:0;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px;line-height:19px;background:transparent;color:var(--black);white-space:pre;overflow:auto}
+.expr-modal .expr-code-area:focus{outline:none;box-shadow:none}
+.spark-thinking-overlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.88);font-size:13px;font-weight:600;color:var(--black60)}
+.spark-thinking-overlay.show{display:flex}
+.spark-thinking-icon{display:flex;color:var(--primary)}
+.spark-thinking-icon svg{width:20px;height:20px;animation:sparkPulse .7s ease-in-out infinite}
+@keyframes sparkPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.45)}}
+@media (prefers-reduced-motion: reduce){.spark-thinking-icon svg{animation:none}}
+.modal-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-top:1px solid var(--black10)}
+.modal-foot-links{font-size:12px;color:var(--black60);display:flex;align-items:center;gap:8px}
+.modal-foot-links a{color:var(--black60);text-decoration:none}
+.modal-foot-links a:hover{color:var(--primary)}
+.modal-foot .sep{color:var(--black20)}
 
 /* Inline EC creation — condensed connector form (a fraction of the real
    Integration Hub form's field count) so it fits inline without leaving

@@ -176,11 +176,44 @@
 
 <!-- expression editor modal -->
 <div class="overlay" id="exprOverlay">
-  <div class="modal">
+  <div class="modal expr-modal">
     <div class="modal-head"><span id="exprTitle">Edit expression</span><button class="modal-close" onclick="closeExprModal()">✕</button></div>
-    <div class="modal-body">
-      <div class="modal-note">Opens the existing AuthScript editor (autocomplete, validation). This mock uses a plain editor.</div>
-      <textarea id="exprText" spellcheck="false"></textarea>
+    <div class="expr-modal-body">
+      <div class="expr-spark-col">
+        <div class="spark-ask">
+          <span class="spark-ask-icon" id="sparkAskIcon"></span>
+          <input id="sparkPrompt" placeholder="Ask me anything about code usage"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();submitSparkPrompt();}">
+          <button class="spark-ask-submit" title="Ask Spark" onclick="submitSparkPrompt()"></button>
+        </div>
+        <div class="spark-suggestions">
+          <p class="spark-suggest-title">Prompt suggestions:</p>
+          <div id="sparkSuggestions"></div>
+        </div>
+      </div>
+      <div class="expr-code-col">
+        <div class="expr-code-head">
+          <span>Expression</span>
+          <button class="expr-copy-btn" title="Copy code" onclick="copyExprCode()"></button>
+          <span class="expr-fiddle-note">Copy the code and test it in the
+            <a href="#" onclick="event.preventDefault();openFiddleStub()">Expression Fiddle</a></span>
+        </div>
+        <div class="expr-code-wrap">
+          <div class="expr-code-gutter" id="exprGutter"></div>
+          <textarea id="exprText" class="expr-code-area" spellcheck="false"
+            oninput="updateExprGutter()" onscroll="$('#exprGutter').scrollTop=this.scrollTop"></textarea>
+          <div class="spark-thinking-overlay" id="sparkThinking">
+            <span class="spark-thinking-icon"></span><span>Spark is thinking…</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="modal-foot-links">
+        <a href="#" onclick="event.preventDefault();openDocsStub()">Docs &amp; Examples</a>
+        <span class="sep">|</span>
+        <a href="#" onclick="event.preventDefault();openFiddleStub()">AuthScript Reference</a>
+      </div>
       <div class="modal-actions">
         <button class="btn-ghost" onclick="closeExprModal()">Cancel</button>
         <button class="btn-primary" onclick="saveExprModal()">Save</button>

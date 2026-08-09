@@ -9,7 +9,7 @@
 /* ---------- per-step UI state ---------- */
 const stepState = {};
 function S(id){
-  if(!stepState[id]) stepState[id] = { mode:'view', touched:new Set(), collapsed:{}, hidden:false };
+  if(!stepState[id]) stepState[id] = { mode:'view', touched:new Set(), collapsed:{}, hidden:false, committed:true };
   return stepState[id];
 }
 let currentStep = null;
@@ -28,9 +28,18 @@ let zoom = 1, panX = 40, panY = 120;
 /* ---------- helpers ---------- */
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-function toast(msg){
-  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
-  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800);
+function toast(msg, type='info'){
+  const t=$('#toast');
+  const icons={
+    success:'<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#00B37D"/><path d="M4.5 8.5l2.5 2 4-5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warn:'<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#F59E0B"/><path d="M8 5.5v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="#fff"/></svg>',
+    error:'<svg viewBox="0 0 16 16" fill="none"><path d="M7.13 1.8 1.08 12.5A1 1 0 002 14h12a1 1 0 00.87-1.5L8.87 1.8a1 1 0 00-1.74 0z" fill="#EF4444"/><path d="M8 6v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="11.5" r=".8" fill="#fff"/></svg>',
+    info:'<svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#4597FF"/><path d="M8 7.5v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="8" cy="5" r=".8" fill="#fff"/></svg>',
+  };
+  const xSvg='<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 1l10 10M11 1L1 11"/></svg>';
+  t.innerHTML=`<span class="toast-icon">${icons[type]||icons.info}</span><span class="toast-body">${msg}</span><button class="toast-close" onclick="clearTimeout(this.closest('.toast')._h);this.closest('.toast').classList.remove('show')">${xSvg}</button>`;
+  t.className='toast show';
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), type==='warn'?2600:2000);
 }
 const BARE_REF = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)+$/;
 /* Fields default to expression mode when the pre-filled value already reads
@@ -62,6 +71,20 @@ function toggleExprMode(key){
    exactly the "Publish is enabled and that's that" bug. Any edit also cancels
    a still-showing "Published ✓" flash — that flash is not allowed to outlive
    a change that might have just broken the journey again. */
+/* Deep-enough clone of a PANELS template for a new node instance.
+   Uses object spread so function references (validate) are preserved. */
+function clonePanelTemplate(key){
+  const tpl=PANELS[key];
+  if(!tpl) return null;
+  return {
+    blocks: tpl.blocks.map(b=>({
+      ...b,
+      fields: b.fields ? b.fields.map(f=>({...f})) : undefined,
+      steppers: b.steppers ? b.steppers.map(s=>({...s})) : undefined,
+      methods: b.methods ? b.methods.map(m=>({...m})) : undefined,
+    }))
+  };
+}
 function markDirty(){
   dirty=true;
   savedValid=false;
@@ -99,6 +122,78 @@ function fieldErrors(nodeId){
   return errs;
 }
 function allErrors(){ return Object.keys(NODES).flatMap(fieldErrors); }
+function configErrors(){ return allErrors().filter(e=>!e.key.startsWith('branch-conn-')); }
+function updateErrTag(){
+  const errors=configErrors();
+  const btn=$('#splitSaveBtn'), err=$('#splitSaveErr'), div=$('#splitSaveDivider');
+  if(!btn) return;
+  if(errors.length>0){
+    err.style.display='inline-flex';
+    err.textContent=errors.length;
+    div.style.display='block';
+    btn.classList.add('has-errors');
+  } else {
+    err.style.display='none';
+    div.style.display='none';
+    btn.classList.remove('has-errors');
+    closeErrMenu(); // auto-close only when all errors resolved
+  }
+  const menu=$('#errMenu');
+  if(menu && menu.style.display!=='none') renderErrMenu(); // refresh in-place while open
+}
+
+function renderErrMenu(){
+  const menu=$('#errMenu');
+  if(!menu) return;
+  const errors=configErrors();
+  const warnSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+  const xSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+  const chevSvg2='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+  const items=errors.map(e=>{
+    const n=NODES[e.nodeId];
+    return `<div class="err-menu-item" onclick="event.stopPropagation();openPanel('${e.nodeId}','edit');renderCanvas();renderPanel()">
+      <span class="err-menu-item-body">
+        <div class="err-menu-item-step">${n.title}</div>
+        <div class="err-menu-item-err">${e.label} — ${e.message}</div>
+      </span>
+      <span class="err-menu-chev">${chevSvg2}</span>
+    </div>`;
+  }).join('');
+  menu.innerHTML=`
+    <div class="err-menu-header">
+      <span class="err-menu-header-icon">${warnSvg}</span>
+      <span class="err-menu-header-title">${errors.length} issue${errors.length!==1?'s':''} blocking publish</span>
+      <button class="err-menu-close" onclick="event.stopPropagation();closeErrMenu()">${xSvg}</button>
+    </div>
+    <div class="err-menu-list">${items}</div>`;
+}
+
+function repositionErrMenu(){
+  const menu=$('#errMenu'), anchor=$('#splitSaveBtn');
+  if(!menu||!anchor||menu.style.display==='none') return;
+  const r=anchor.getBoundingClientRect();
+  menu.style.top=(r.bottom+8)+'px';
+  menu.style.left=(r.right-menu.offsetWidth)+'px';
+}
+
+function openErrMenu(e){
+  if(e) e.stopPropagation();
+  const menu=$('#errMenu');
+  const anchor=$('#splitSaveBtn');
+  if(!menu||!anchor) return;
+  renderErrMenu();
+  menu.style.display='block';
+  const r=anchor.getBoundingClientRect();
+  requestAnimationFrame(()=>{
+    menu.style.top=(r.bottom+8)+'px';
+    menu.style.left=(r.right-menu.offsetWidth)+'px';
+  });
+}
+
+function closeErrMenu(){
+  const menu=$('#errMenu');
+  if(menu) menu.style.display='none';
+}
 
 /* =====================================================================
    Canvas
@@ -114,9 +209,11 @@ function renderCanvas(){
     const st=S(n.id); const cat=CAT[n.cat];
     const sel=n.id===currentStep?' selected':'';
     // prod: error state paints the accent red (unless hovered/selected — CSS wins there)
-    const hasErrors=fieldErrors(n.id).length>0;
+    const configErrors=S(n.id).committed ? fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-')) : [];
+    const hasErrors=configErrors.length>0;
     const accent=hasErrors?'var(--error)':cat.color;
     const iconTint=hasErrors?'var(--error)':cat.color;
+
     const branchRows=n.branches.map(b=>{
       const mark=b.type==='success'?I.check:b.type==='failure'?I.x:'';
       return `
@@ -135,8 +232,12 @@ function renderCanvas(){
         <button class="qbtn" title="Delete" onclick="event.stopPropagation();deleteStep('${n.id}')">${I.trash}</button>
       </div>
       <div class="stepnode${sel}" id="node-${n.id}">
+
         <div class="node-head">
-          <span class="node-title">${esc(n.title)}</span>
+          <span class="node-title-group">
+            <span class="node-title">${esc(n.title)}</span>
+            ${hasErrors?`<span class="errchip">${configErrors.length}</span>`:''}
+          </span>
           <span class="node-icons">
             <span class="cat-icon" title="${cat.label}">${cat.icon}</span>
             <button class="vis-toggle${st.hidden?' hidden-step':''}" title="${st.hidden?'Step hidden from client view — click to show':'Hide step from client view'}" onclick="event.stopPropagation();toggleVisibility('${n.id}')">${st.hidden?I.eye:I.eyeOff}</button>
@@ -162,6 +263,7 @@ function renderCanvas(){
     }
   });
   root.innerHTML=html;
+  updateErrTag();
   root.querySelectorAll('.branchline[data-port]').forEach(rowEl=>{
     const portEl=rowEl.querySelector('.port');
     const [nid,bid]=rowEl.dataset.port.split(':');
@@ -385,6 +487,7 @@ window.addEventListener('mouseup',(e)=>{
 });
 document.addEventListener('click',(e)=>{
   if(!e.target.closest('.kebab,.kebabmenu')) document.querySelectorAll('.kebabmenu').forEach(m=>m.classList.remove('show'));
+  // err-menu stays open until all errors fixed or user clicks X — no outside-click close
 });
 function toggleKebab(id){
   document.querySelectorAll('.kebabmenu').forEach(m=>{ if(m.id!=='kebab-'+id) m.classList.remove('show'); });
@@ -408,26 +511,36 @@ function deleteStep(id){
   if(hoveredStep===id) hoveredStep=null;
   markDirty();
   renderCanvas();
-  toast('Step deleted');
+  toast('Step deleted','success');
 }
 
 /* =====================================================================
    Side panel
    ===================================================================== */
 function openPanel(id, mode){
+  // If switching to a different step while in edit mode, drop back to view
+  if(currentStep && currentStep!==id && S(currentStep).mode==='edit'){
+    S(currentStep).mode='view';
+  }
+  // Commit the previous step (so its errors become visible)
+  if(currentStep && currentStep!==id) S(currentStep).committed=true;
   currentStep=id;
   if(mode){ S(id).mode=mode; if(mode==='edit') noteEnteredEditMode(); }
+  else if(!mode && S(id).mode==='edit'){ S(id).mode='view'; }
   previewOpen=false;
   $('#sidepanel').classList.remove('closed');
   renderPanel(); renderCanvas();
+  setTimeout(repositionErrMenu, 220);
 }
 function closePanel(){
   if(!currentStep) return;
+  S(currentStep).committed=true;
   currentStep=null; previewOpen=false;
   $('#sidepanel').classList.add('closed');
   renderCanvas();
+  setTimeout(repositionErrMenu, 220);
 }
-function setMode(m){ S(currentStep).mode=m; if(m==='edit') noteEnteredEditMode(); previewOpen=false; renderPanel(); }
+function setMode(m){ if(m==='view') S(currentStep).committed=true; S(currentStep).mode=m; if(m==='edit') noteEnteredEditMode(); previewOpen=false; renderPanel(); }
 /* Re-entering Edit mode after a clean Publish must force a fresh Save before
    Publish is reachable again — you might change something, and even if you
    don't, "Publish" should mean "this exact state was just verified," not
@@ -451,12 +564,21 @@ function renderPanel(focusKey){
   const n=NODES[currentStep], st=S(currentStep);
   $('#spTitle').textContent=n.title;
   $('#spSub').textContent=S(n.id).descOverride||n.desc;
-  $('#spPreview').style.display=n.userFacing?'flex':'none';
-  $('#spPreview').classList.toggle('on',previewOpen);
-  $('#modeView').classList.toggle('on',!previewOpen&&st.mode==='view');
-  $('#modeEdit').classList.toggle('on',!previewOpen&&st.mode==='edit');
+  // Header controls: mode btn only
+  const modeBtn=$('#spModeBtn');
+  const footer=$('#spFooter');
+  if(st.mode==='edit'){
+    modeBtn.style.display='none';
+    if(footer) footer.innerHTML=`<button class="sp-done-btn" onclick="setMode('view')">Done</button>`;
+  } else {
+    modeBtn.style.display='';
+    modeBtn.className='sp-mode-btn mode-edit';
+    modeBtn.innerHTML=I.pencil+' Edit';
+    modeBtn.onclick=()=>setMode('edit');
+    if(footer) footer.innerHTML='';
+  }
   const body=$('#spBody');
-  body.innerHTML = previewOpen ? renderPreview(n) : (st.mode==='view'?renderViewMode(n):renderEditMode(n,st));
+  body.innerHTML = st.mode==='view' ? renderViewMode(n) : renderEditMode(n,st);
   // size every expression textarea to its current content on render (typing
   // triggers this too, via autoGrowExpr in the oninput handler) — otherwise
   // a pre-filled long expression would show clipped at 32px until touched.
@@ -473,13 +595,16 @@ function autoGrowExpr(el){
 
 /* ---------- Edit mode (product section cards) ---------- */
 function groupErrCount(nodeId, group){
-  return fieldErrors(nodeId).filter(e=>e.group===group).length;
+  return fieldErrors(nodeId).filter(e=>!e.key.startsWith('branch-conn-') && e.group===group).length;
 }
 function renderEditMode(n, st){
+  const callout = !st.committed
+    ? `<div class="new-step-callout"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="12" height="12" aria-hidden="true" style="flex-shrink:0;fill:#4597ff"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24l0 112c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-112c0-13.3 10.7-24 24-24zm-32 224a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg><span>New step — configure required fields</span></div>`
+    : '';
   const model=PANELS[n.id];
   const blocksByGroup=new Map(FIELD_GROUP_ORDER.map(g=>[g,[]]));
   (model?.blocks||[]).forEach(b=>{ blocksByGroup.get(b.group).push(b); });
-  return FIELD_GROUP_ORDER.map(group=>{
+  const sections=FIELD_GROUP_ORDER.map(group=>{
     const blocks=blocksByGroup.get(group);
     // General always exists (every step can override title/description),
     // even when the step has no other General-grouped fields.
@@ -488,6 +613,7 @@ function renderEditMode(n, st){
     if(group==='General') bodies.unshift(renderTitleDescBlock(st));
     return sectionShell(group, groupErrCount(n.id,group), bodies.join(''), st.collapsed[group]);
   }).join('');
+  return callout + sections;
 }
 function sectionShell(group, errs, body, collapsed){
   return `<div class="section ${collapsed?'collapsed':''}" data-section="${group}">
@@ -496,7 +622,6 @@ function sectionShell(group, errs, body, collapsed){
         <span class="chev">${I.chevUp}</span>
         <span class="title">${esc(group)}</span>
       </span>
-      ${errs?`<span class="errchip">${errs}</span>`:''}
     </button>
     <div class="section-body">${body}</div>
   </div>`;
@@ -530,7 +655,7 @@ function renderBlock(n, st, block){
           value="${esc(cb.outputVar)}" oninput="CUSTOM_BRANCHES['${n.id}'].outputVar=this.value;markDirty()"></div>
       ${cb.items.map((b,i)=>{
         const err=!b.display.trim();
-        const touched=st.touched.has('cb-display-'+i);
+        const touched=st.touched.has('cb-display-'+i)||st.committed;
         return `
         <div class="branchcard">
           <div class="bc-toprow"><span class="bc-label">Branch ID</span>
@@ -540,12 +665,11 @@ function renderBlock(n, st, block){
             </span>
           </div>
           <input class="tsinput" value="${esc(b.id)}" oninput="onBranchId('${n.id}',${i},this.value)">
-          <div class="field ${err&&touched?'invalid':''}" data-field="cb-display-${i}">
-            <label>Display name <span class="lbl-req">· required</span></label>
+          <div class="field ${(err&&touched)?'invalid':''}" data-field="cb-display-${i}">
+            <label>Display name <span class="lbl-req">*</span></label>
             <input class="tsinput" placeholder="What the end user sees for this branch" value="${esc(b.display)}"
               oninput="onBranchDisplay('${n.id}',${i},this.value)" onblur="renderAfterEdit()">
-            ${err&&touched?`<div class="field-err">This field is required</div>`
-              :err?`<div class="field-hint">Not set yet — neutral until you touch it. The journey readiness list will name it on save.</div>`:''}
+            ${(err&&touched)?`<div class="field-err">This field is required</div>`:''}
           </div>
         </div>`;
       }).join('')}
@@ -569,10 +693,9 @@ function renderField(n, st, f){
   }
   const err=f.validate?f.validate(String(f.value??'')):null;
   const touched=st.touched.has(f.k);
-  const showErr=err&&touched;
-  const label=`<label>${esc(f.label)}${f.labelNote?` <span class="lbl-note">${esc(f.labelNote)}</span>`:''}${f.required?` <span class="lbl-req">· required</span>`:''}</label>`;
+  const showErr=!!err && (st.committed || touched);
+  const label=`<label>${esc(f.label)}${f.labelNote?` <span class="lbl-note">${esc(f.labelNote)}</span>`:''}${f.required?` <span class="lbl-req">*</span>`:''}</label>`;
   const hintHtml=showErr?`<div class="field-err">${esc(err)}</div>`
-    :(f.required&&err&&!touched)?`<div class="field-hint">Not set yet — neutral until you touch it.</div>`
     :f.hint?`<div class="field-hint">${esc(f.hint)}</div>`:'';
   if(f.kind==='expr'){
     // A plain <input> can never wrap text or accept Enter as a newline —
@@ -598,7 +721,7 @@ function renderField(n, st, f){
   }
   if(f.kind==='select'){
     return `<div class="field" data-field="${f.k}">${label}
-      <select class="tsselect" onchange="onFieldInput('${f.k}',this.value);toast('Saved')">
+      <select class="tsselect" onchange="onFieldInput('${f.k}',this.value);toast('Saved','success')">
         ${f.options.map(o=>`<option ${o===f.value?'selected':''}>${esc(o)}</option>`).join('')}
       </select>${hintHtml}</div>`;
   }
@@ -686,6 +809,27 @@ function onBranchDisplay(nodeId,i,v){
 function renderViewMode(n){
   const model=PANELS[n.id];
   let html='';
+  // Required fields progress bar (only when there are missing required fields)
+  const reqFields=fieldsOf(n.id).filter(({f})=>f.required&&f.validate);
+  const filledReq=reqFields.filter(({f})=>!f.validate(String(f.value??''))).length;
+  const totalReq=reqFields.length;
+  const missingReq=totalReq-filledReq;
+  const pct=totalReq>0?Math.round((filledReq/totalReq)*100):0;
+  const reqBar=(totalReq>0&&missingReq>0)
+    ? `<div class="req-progress">
+        <span class="req-label">Required fields</span>
+        <div class="req-right">
+          <div class="req-track"><div class="req-fill" style="width:${pct}%"></div></div>
+          <span class="req-count">${filledReq} / ${totalReq}</span>
+        </div>
+      </div>`
+    : '';
+  // only field-config errors in view mode — disconnected-branch errors stay on the save button only
+  const errs=fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-'));
+  // group errors by their group name for per-section badges
+  const errsByGroup=new Map();
+  errs.forEach(e=>{ if(!errsByGroup.has(e.group)) errsByGroup.set(e.group,0); errsByGroup.set(e.group, errsByGroup.get(e.group)+1); });
+  const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   const rowsByGroup=new Map(FIELD_GROUP_ORDER.map(g=>[g,[]]));
   (model?.blocks||[]).forEach(block=>{
     const rows=rowsByGroup.get(block.group);
@@ -706,19 +850,23 @@ function renderViewMode(n){
     .filter(g=>g!=='Branching' && rowsByGroup.get(g).length)
     .map(g=>({title:g, rows:rowsByGroup.get(g)}));
   groups.forEach(g=>{
-    html+=`<div class="viewgroup"><div class="viewgroup-title">${esc(g.title)}</div><div class="viewrows">`+
+    const gErrs=errsByGroup.get(g.title)||0;
+    const badge=gErrs?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${gErrs} issue${gErrs>1?'s':''}</button>`:'';
+    html+=`<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(g.title)}</span>${badge}</div><div class="viewrows">`+
       g.rows.map(r=>`<div class="viewrow"><span class="vl">${esc(r.l)}</span><span class="vv">${r.ref?`<span class="refchip">${I.link}${esc(r.v)}</span>`:esc(r.v)}</span></div>`).join('')+
       `</div></div>`;
   });
   if(n.branches.length){
-    html+=`<div class="viewgroup"><div class="viewgroup-title">Branching</div><div class="viewrows">
+    const bErrs=errsByGroup.get('Branching')||0;
+    const bBadge=bErrs?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${bErrs} issue${bErrs>1?'s':''}</button>`:'';
+    html+=`<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">Branching</span>${bBadge}</div><div class="viewrows">
       <div class="viewrow"><span class="vl">Branches</span><span class="vv">${esc(n.branches.map(b=>b.label).join(', '))}</span></div>
     </div></div>`;
   }
   if(!groups.length&&!n.branches.length){
     html+=`<div class="view-empty">Nothing configured yet — this step runs with its defaults.</div>`;
   }
-  return html;
+  return reqBar + html;
 }
 
 /* ---------- Preview ---------- */
@@ -758,57 +906,35 @@ function renderPreview(n){
    Save → readiness list → Publish
    ===================================================================== */
 function onSaveClick(){
-  // Publish is only reachable via this same button once a Save has already
-  // found zero errors (savedValid). This click IS the publish action.
-  if(savedValid){
-    publishedFlash=true; refreshSaveArea();
-    toast('Journey published');
-    publishedFlashTimer=setTimeout(()=>{ publishedFlash=false; refreshSaveArea(); },2400);
-    return;
-  }
-  // Otherwise this click is a Save attempt: it's the ONLY thing that can set
-  // savedValid=true. Fixing every field without clicking Save must never
-  // surface Publish on its own — that was the exact bug reported.
-  const errors=allErrors();
+  const errors=configErrors();
   savedOnce=true;
   savedValid = errors.length===0;
-  toast('Saved');
+  if(errors.length>0){
+    toast(`Draft saved · ${errors.length} issue${errors.length!==1?'s':''} to fix before publishing`,'warn');
+  } else {
+    toast('Draft saved','success');
+  }
   refreshSaveArea();
 }
-function refreshSaveArea(){
-  const btn=$('#saveBtn'), list=$('#readiness');
-  if(!btn||!list) return;
-  const errors=allErrors();
-  if(publishedFlash){ btn.textContent='Published ✓'; btn.className='btn-save published'; }
-  else if(savedValid){ btn.textContent='Publish'; btn.className='btn-save publish'; }
-  else if(!dirty && errors.length===0){ btn.textContent='Save'; btn.className='btn-save idle'; }
-  else { btn.textContent='Save'; btn.className='btn-save'; }
-
-  if(!savedOnce || errors.length===0){ list.classList.remove('show'); return; }
-  window._readinessErrors=errors;
-  list.innerHTML=`
-    <div class="readiness-head"><span>${errors.length} field${errors.length>1?'s':''} blocking publish</span>
-      <button onclick="savedOnce=false;refreshSaveArea()">Hide</button></div>
-    ${errors.map((e,i)=>`
-      <button class="readiness-item" data-testid="readiness-item" onclick="jumpToError(${i})">
-        <span><span class="readiness-step">${esc(NODES[e.nodeId].title)}</span>
-        <span class="readiness-field" style="display:block">${esc(e.label)} — ${esc(e.message)}</span></span>
-        <span style="color:var(--black40)">›</span>
-      </button>`).join('')}`;
-  list.classList.add('show');
-  positionReadiness();
+function onPublishClick(){
+  const pub=$('#publishBtn');
+  publishedFlash=true;
+  if(pub){ pub.textContent='Published ✓'; pub.classList.add('published-flash'); }
+  toast('Journey published','success');
+  clearTimeout(publishedFlashTimer);
+  publishedFlashTimer=setTimeout(()=>{
+    publishedFlash=false;
+    savedValid=false;
+    if(pub){ pub.textContent='Publish'; pub.classList.remove('published-flash'); }
+    refreshSaveArea();
+  }, 2400);
 }
-/* #readiness lives as a direct child of .canvas-head (see the comment on its
-   CSS rule for why), so it can't anchor to the Save button via CSS alone —
-   compute its on-screen position against the button's live rect every time
-   it's shown, so it stays correctly placed regardless of toolbar width,
-   sidepanel open/closed state, or window resize. */
-function positionReadiness(){
-  const list=$('#readiness'), btn=$('#saveBtn'), head=$('.canvas-head');
-  if(!list||!btn||!head) return;
-  const b=btn.getBoundingClientRect(), h=head.getBoundingClientRect();
-  list.style.top=(b.bottom-h.top+8)+'px';
-  list.style.right=(h.right-b.right)+'px';
+function refreshSaveArea(){
+  updateErrTag();
+  const pub=$('#publishBtn'), tip=$('#pubTip');
+  const enabled=savedValid&&!publishedFlash;
+  if(pub) pub.disabled=!enabled;
+  if(tip) tip.style.display=enabled?'none':'';
 }
 function jumpToError(i){
   const e=window._readinessErrors[i];
@@ -921,8 +1047,10 @@ function insertStep(s,cat){
   }
   markDirty();
   closeAddStep();
+  stepState[newId]={ mode:'edit', touched:new Set(), collapsed:{}, hidden:false, committed:false };
+  if(s.panelKey){ const clone=clonePanelTemplate(s.panelKey); if(clone) PANELS[newId]=clone; }
   renderCanvas();
-  openPanel(newId,'view');
+  openPanel(newId,'edit');
 }
 
 /* =====================================================================
@@ -965,7 +1093,7 @@ function updateExprGutter(){
 function copyExprCode(){
   const text=$('#exprText').value;
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).catch(()=>{});
-  toast('Copied');
+  toast('Copied','success');
 }
 function openFiddleStub(){ toast('Opens the Expression Fiddle in the real product — not wired in this mock.'); }
 function openDocsStub(){ toast('Opens the AuthScript docs in the real product — not wired in this mock.'); }
@@ -1054,7 +1182,7 @@ function submitEcModal(){
   closeEcModal();
   markDirty();
   if(currentStep===nodeId) renderPanel();
-  toast(`${name} connected`);
+  toast(`${name} connected`,'success');
 }
 
 /* ---------- boot ---------- */

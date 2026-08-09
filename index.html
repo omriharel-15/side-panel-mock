@@ -90,11 +90,18 @@
               <button class="chip-btn" onclick="toast('Dev tools')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg> Dev tools <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
               <button class="chip-btn" onclick="toast('Test journey — opens the journey test runner')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg> Test journey <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
               <button class="chip-btn" onclick="openAddStep(null)">+ Add step</button>
-              <button class="btn-save idle" id="saveBtn" onclick="onSaveClick()">Save</button>
+              <div class="split-save-btn" id="splitSaveBtn">
+                <span class="split-save-err" id="splitSaveErr" onclick="openErrMenu(event)" style="display:none"></span>
+                <span class="split-save-divider" id="splitSaveDivider" style="display:none"></span>
+                <span class="split-save-label" onclick="onSaveClick()">Save draft</span>
+              </div>
+              <span class="btn-publish-wrap" id="publishWrap">
+                <span class="pub-tip" id="pubTip">Save your draft first, then publish</span>
+                <button class="btn-publish" id="publishBtn" onclick="onPublishClick()" disabled>Publish</button>
+              </span>
             </div>
           </div>
         </div>
-        <div class="readiness" id="readiness"></div>
       </div>
 
       <div class="panzone" id="panzone">
@@ -126,20 +133,17 @@
             <span class="sp-title" id="spTitle"></span>
             <span class="sp-badge">Step</span>
           </div>
-          <button class="sp-close" onclick="closePanel()" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
-        </div>
-        <div class="sp-sub" id="spSub"></div>
-        <div class="sp-header-actions">
-          <button class="sp-preview" id="spPreview" onclick="togglePreview()" title="Preview — shown because this step is user-facing">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>Preview
-          </button>
-          <div class="sp-mode">
-            <button id="modeView" onclick="setMode('view')">View</button>
-            <button id="modeEdit" onclick="setMode('edit')">Edit</button>
+          <div class="sp-actions" id="spActions">
+<button class="sp-mode-btn" id="spModeBtn"></button>
+            <button class="sp-close-btn" onclick="closePanel()" title="Close">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
           </div>
         </div>
+        <div class="sp-sub" id="spSub"></div>
       </div>
       <div class="sp-body" id="spBody"></div>
+      <div class="sp-footer" id="spFooter"></div>
     </aside>
   </div>
 </div>
@@ -236,7 +240,7 @@
 }</textarea>
       <div class="modal-actions">
         <button class="btn-ghost" onclick="closeSchemaModal()">Cancel</button>
-        <button class="btn-primary" onclick="closeSchemaModal();toast('Schema saved')">Save</button>
+        <button class="btn-primary" onclick="closeSchemaModal();toast('Schema saved','success')">Save</button>
       </div>
     </div>
   </div>
@@ -300,8 +304,8 @@
   </div>
 </div>
 
+<div class="err-menu" id="errMenu" style="display:none"></div>
 <div class="toast" id="toast"></div>
-
 <script src="data.js"></script>
 <script src="app.js"></script>
 </body>

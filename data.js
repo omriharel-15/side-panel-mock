@@ -35,7 +35,8 @@ const I = {
   db:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5V18.5c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8V5.5"/><path d="M4 12c0 1.5 3.6 2.8 8 2.8s8-1.3 8-2.8"/></svg>',
   connect:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 3v4a2 2 0 0 1-2 2H3M15 21v-4a2 2 0 0 1 2-2h4M21 9h-4a2 2 0 0 1-2-2V3M3 15h4a2 2 0 0 1 2 2v4"/></svg>',
   sparkle:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2c.4 3.2 1 4.8 2.1 5.9C14.2 9 15.8 9.6 19 10c-3.2.4-4.8 1-5.9 2.1C11.9 13.2 11.3 14.8 11 18c-.4-3.2-1-4.8-2.1-5.9C7.8 11 6.2 10.4 3 10c3.2-.4 4.8-1 5.9-2.1C10 6.8 10.6 5.2 11 2Z"/><path d="M19 13.5c.2 1.3.5 2 1 2.5.5.5 1.2.8 2.5 1-1.3.2-2 .5-2.5 1-.5.5-.8 1.2-1 2.5-.2-1.3-.5-2-1-2.5-.5-.5-1.2-.8-2.5-1 1.3-.2 2-.5 2.5-1 .5-.5.8-1.2 1-2.5Z"/></svg>',
-  arrowRight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+  arrowRight:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
 };
 
 /* ---------- categories: prod step-icons.service (cyan user / mustard server) ---------- */
@@ -100,9 +101,7 @@ const EDGES = [
   { from:['get-info','default'], to:'login-form' },
   { from:['login-form','password'], to:'password-auth' },
   { from:['login-form','passkeys'], to:'passkeys-auth' },
-  { from:['password-auth','failure'], to:'pill:goto-login' },
   { from:['password-auth','success'], to:'known-device' },
-  { from:['passkeys-auth','failure'], to:'pill:goto-login' },
   { from:['passkeys-auth','success'], to:'known-device' },
   { from:['known-device','yes'], to:'email-validation' },
   { from:['known-device','no'], to:'email-validation' },
@@ -267,62 +266,62 @@ const AS_CATS = [
 ];
 const STEP_LIBRARY = {
   'Featured': [
-    {t:'Delete Mobile PIN (Deprecated)',d:'Delete a PIN code registered on the device.',deprecated:true,group:'AUTHENTICATION'},
-    {t:'Face Authentication',d:'Authenticate user using face biometric comparison.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
-    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain'],group:'AUTHENTICATION'},
-    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
-    {t:'PingOne OIDC Authentication',d:'Authenticate a user with PingOne using OIDC redirect flow.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
-    {t:'Register Face',d:'Register face biometric reference for user authentication.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
-    {t:'Register Passkeys',d:'Register a passkey for a user.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
-    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION'},
+    {t:'Delete Mobile PIN (Deprecated)',d:'Delete a PIN code registered on the device.',deprecated:true,group:'AUTHENTICATION',panelKey:'generic-auth'},
+    {t:'Face Authentication',d:'Authenticate user using face biometric comparison.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'generic-auth'},
+    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain'],group:'AUTHENTICATION',panelKey:'login-form'},
+    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'passkeys-auth'},
+    {t:'PingOne OIDC Authentication',d:'Authenticate a user with PingOne using OIDC redirect flow.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'generic-auth'},
+    {t:'Register Face',d:'Register face biometric reference for user authentication.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'generic-auth'},
+    {t:'Register Passkeys',d:'Register a passkey for a user.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'generic-auth'},
+    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure'],group:'AUTHENTICATION',panelKey:'generic-otp'},
   ],
   'User Interactions': [
-    {t:'Collect Information',d:'Collect information from users.',userFacing:true,branches:['plain']},
-    {t:'Display Information',d:'Display information to users.',userFacing:true,branches:[]},
-    {t:'Web to Mobile Transaction Signing',d:'Sign a transaction on mobile initiated from web.',userFacing:true,branches:['success','failure']},
+    {t:'Collect Information',d:'Collect information from users.',userFacing:true,branches:['plain'],panelKey:'generic-collect'},
+    {t:'Display Information',d:'Display information to users.',userFacing:true,branches:[],panelKey:'generic-collect'},
+    {t:'Web to Mobile Transaction Signing',d:'Sign a transaction on mobile initiated from web.',userFacing:true,branches:['success','failure'],panelKey:'generic-auth'},
   ],
   'Flow Controllers': [
-    {t:'Condition',d:'Check if a condition is met.',branches:['success','failure']},
-    {t:'Match Case',d:'Choose a branch based on an expression.',branches:[]},
-    {t:'While Loop',d:'Repeat steps while a condition is met.',branches:[]},
+    {t:'Condition',d:'Check if a condition is met.',branches:['success','failure'],panelKey:'generic-condition'},
+    {t:'Match Case',d:'Choose a branch based on an expression.',branches:[],panelKey:'generic-condition'},
+    {t:'While Loop',d:'Repeat steps while a condition is met.',branches:[],panelKey:'generic-condition'},
     {t:'Complete Journey',d:'Flag this journey as successfully completed.',branches:[]},
     {t:'Reject Access',d:'Complete the journey with a rejection.',branches:[]},
   ],
   'Authentication': [
-    {t:'Email OTP Authentication',d:'Require user to authenticate through a one-time email passcode.',userFacing:true,branches:['success','failure']},
-    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain']},
-    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure']},
-    {t:'Password Authentication',d:'Authenticate a user with their password.',userFacing:true,branches:['success','failure']},
-    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure']},
-    {t:'TOTP Authentication',d:'Authenticate a user through a time-based one-time passcode.',userFacing:true,branches:['success','failure']},
+    {t:'Email OTP Authentication',d:'Require user to authenticate through a one-time email passcode.',userFacing:true,branches:['success','failure'],panelKey:'generic-otp'},
+    {t:'Login Form',d:'Present login options and create branches based on choice.',userFacing:true,branches:['plain'],panelKey:'login-form'},
+    {t:'Passkeys Authentication',d:'Authenticate with a user using WebAuthn/Passkey.',userFacing:true,branches:['success','failure'],panelKey:'passkeys-auth'},
+    {t:'Password Authentication',d:'Authenticate a user with their password.',userFacing:true,branches:['success','failure'],panelKey:'password-auth'},
+    {t:'SMS OTP Authentication',d:'Authenticate a user through a one-time SMS passcode.',userFacing:true,branches:['success','failure'],panelKey:'generic-otp'},
+    {t:'TOTP Authentication',d:'Authenticate a user through a time-based one-time passcode.',userFacing:true,branches:['success','failure'],panelKey:'generic-otp'},
   ],
   'Fraud Prevention': [
-    {t:'Risk Recommendation',d:'Branch the journey by risk recommendation on user activity.',branches:['success','failure','plain']},
-    {t:'Evaluate Transaction',d:'Evaluate a transaction for fraud signals.',branches:[]},
+    {t:'Risk Recommendation',d:'Branch the journey by risk recommendation on user activity.',branches:['success','failure','plain'],panelKey:'generic-server'},
+    {t:'Evaluate Transaction',d:'Evaluate a transaction for fraud signals.',branches:[],panelKey:'generic-server'},
   ],
   'Identity Verification': [
-    {t:'Document Verification (API)',d:'Verify identity by comparing a validated ID to a selfie.',userFacing:true,branches:['success','failure']},
-    {t:'Selfie Acquisition',d:'Capture a selfie for verification.',userFacing:true,branches:['success','failure']},
+    {t:'Document Verification (API)',d:'Verify identity by comparing a validated ID to a selfie.',userFacing:true,branches:['success','failure'],panelKey:'generic-auth'},
+    {t:'Selfie Acquisition',d:'Capture a selfie for verification.',userFacing:true,branches:['success','failure'],panelKey:'generic-auth'},
   ],
   'User Management': [
-    {t:'Create User',d:'Add a new user.',branches:[]},
-    {t:'Get User Identifiers',d:'Fetch a user\'s registered identifiers.',branches:['success','failure']},
-    {t:'Update User',d:'Update an existing user.',branches:[]},
-    {t:'Register Device',d:'Register a device to a user (Cryptobinding).',branches:[]},
+    {t:'Create User',d:'Add a new user.',branches:[],panelKey:'generic-server'},
+    {t:'Get User Identifiers',d:'Fetch a user\'s registered identifiers.',branches:['success','failure'],panelKey:'generic-server'},
+    {t:'Update User',d:'Update an existing user.',branches:[],panelKey:'generic-server'},
+    {t:'Register Device',d:'Register a device to a user (Cryptobinding).',branches:[],panelKey:'generic-server'},
   ],
   'Session Management': [
-    {t:'Validate Token',d:'Validate a token, abort the journey upon failure.',branches:[]},
-    {t:'Has Valid SSO Session',d:'Branch on whether a valid SSO session exists.',branches:['success','failure']},
-    {t:'Enrich SSO Session',d:'Enrich an SSO session.',branches:[]},
+    {t:'Validate Token',d:'Validate a token, abort the journey upon failure.',branches:[],panelKey:'generic-server'},
+    {t:'Has Valid SSO Session',d:'Branch on whether a valid SSO session exists.',branches:['success','failure'],panelKey:'generic-server'},
+    {t:'Enrich SSO Session',d:'Enrich an SSO session.',branches:[],panelKey:'generic-server'},
   ],
   'Data Processing': [
-    {t:'Set Temporary Variables',d:'Store values in variables for later use.',branches:[]},
-    {t:'Provide JSON Data',d:'Send expression JSON data for processing.',branches:[]},
+    {t:'Set Temporary Variables',d:'Store values in variables for later use.',branches:[],panelKey:'generic-condition'},
+    {t:'Provide JSON Data',d:'Send expression JSON data for processing.',branches:[],panelKey:'generic-collect'},
   ],
   'Connectors & Code': [
-    {t:'Invoke a Web Service',d:'Invoke an external web service.',branches:[]},
-    {t:'Invoke External IDP',d:'Authenticate against an external identity provider.',userFacing:true,branches:['success','failure']},
-    {t:'Send Email',d:'Send an email through a configured connection.',branches:[]},
+    {t:'Invoke a Web Service',d:'Invoke an external web service.',branches:[],panelKey:'generic-server'},
+    {t:'Invoke External IDP',d:'Authenticate against an external identity provider.',userFacing:true,branches:['success','failure'],panelKey:'generic-auth'},
+    {t:'Send Email',d:'Send an email through a configured connection.',branches:[],panelKey:'generic-send'},
   ],
 };
 const PINNED = ['Login Form','Passkeys Authentication'];
@@ -372,3 +371,87 @@ return @std.reduce(
     indices = @std.map([0,1,2,3,4,5,6,7,8,9,10,11], (i) => @math.round(@math.random() * (@strings.length(chars) - 1)))
 return @std.reduce(indices, (acc, idx) => acc + @strings.substring(chars, idx, idx + 1), "")` },
 ];
+
+/* =====================================================================
+   Generic panel templates — used when a step added from the library
+   doesn't have a bespoke PANELS entry. Keyed with a 'generic-' prefix
+   so they never clash with real node IDs.
+   ===================================================================== */
+Object.assign(PANELS, {
+  'generic-auth': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'identifier', kind:'expr', label:'Identifier', value:'', placeholder:'e.g. clientData.username', hint:'User identifier passed to this step' },
+      ]},
+      { group:'Output', fields:[
+        { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
+        { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of output variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+  'generic-otp': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'identifier', kind:'expr', label:'Identifier', value:'', placeholder:'e.g. clientData.email', hint:'Address to send the OTP to' },
+        { kind:'stepper-row', steppers:[
+          { k:'code_length', label:'Code length', value:6, min:4, max:10 },
+          { k:'expiry', label:'Expiry', labelNote:'(Minutes)', value:10, min:1, max:60 },
+          { k:'max_attempts', label:'Max failed attempts', value:3, min:1, max:10 },
+        ]},
+      ]},
+      { group:'Output', fields:[
+        { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'End user failed validation', value:'Go to action failed branch', options:['Go to action failed branch','Abort journey','Retry step'] },
+        { k:'on_cancel', kind:'select', label:'End user clicked cancel', value:'Abort journey', options:['Abort journey','Go to action failed branch'] },
+      ]},
+    ],
+  },
+  'generic-collect': {
+    blocks: [
+      { group:'Output', schemaLink:true, fields:[
+        { k:'app_data', kind:'expr', label:'App data', value:'{}' },
+        { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of output variable for the step result' },
+      ]},
+    ],
+  },
+  'generic-condition': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'condition', kind:'expr', label:'Condition', value:'', placeholder:'e.g. user.age >= 18', hint:'Expression evaluated to determine the branch' },
+      ]},
+    ],
+  },
+  'generic-server': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'input_data', kind:'expr', label:'Input data', value:'{}', hint:'Data passed to this step' },
+      ]},
+      { group:'Output', fields:[
+        { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of output variable for the step result' },
+        { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+  'generic-send': {
+    blocks: [
+      { group:'Input', fields:[
+        { k:'recipient', kind:'expr', label:'Recipient', value:'', placeholder:'e.g. clientData.email', hint:'Recipient address or identifier' },
+        { k:'message_body', kind:'expr', label:'Message body', value:'', placeholder:'e.g. Your code is {{code}}' },
+      ]},
+      { group:'Output', fields:[
+        { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of the variable to store the results of this action' },
+      ]},
+      { group:'Error Management', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+});

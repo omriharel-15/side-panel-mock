@@ -110,16 +110,39 @@ const EDGES = [
 ];
 
 /* =====================================================================
-   Panel models — product section grammar
-   ===================================================================== */
-/* The 5-value taxonomy per the categorization proposal (Step - New
-   Categorization Proposal.pdf, "New Step Category" column, pp.1-2/14-15):
-   old per-step section names (Step Title and Description, Credentials,
-   Configuration, Sent to the Client, Alternate Branches, ...) all
-   consolidate into exactly these five. Every step's Title/Description
-   override also collapses into General under the new model — it does NOT
-   get its own section (that was the old behavior we're retiring). */
-const FIELD_GROUP_ORDER = ['General','Input','Output','Error Management','Branching'];
+   Panel models — final decided section grammar (side-panel-redesign-epic
+   §1.5 / FLOP-5698): four fixed sections, always in this order, on every
+   step. Input folds into General (a step's target/content/config, minus
+   whatever belongs in the other three). Error Management and Branching
+   fold into Outcomes — failure/cancel is just another named branch, not a
+   separate category (this also kills the old inconsistency where the same
+   field was tagged Branching on some steps and Error Management on
+   others). Output (data written downstream) stays distinct from Outcomes
+   (control flow). Reporting is new: the step-data reporting toggle, always
+   its own section.
+
+   Within a section, fields are split Basic/Advanced by required-ness (see
+   blockIsBasic() in app.js) — Basic fields render first and are never
+   collapsed, Advanced fields collapse behind a disclosure. If setting one
+   field ever makes another conditionally required (the "hybrid" case —
+   e.g. the roulette prototype's Create User: External User ID set with
+   none of Email/Phone/Username set), the Advanced disclosure should
+   auto-open and flag it; no step in this journey currently has that
+   shape, so the mechanism isn't exercised here yet.
+
+   Title and Description are NOT a field group at all anymore — they live
+   in the panel header, View-mode-only, editable there directly (see
+   renderPanel()/onTitleOverride in app.js). They're intentionally absent
+   from every PANELS entry below. */
+const FIELD_GROUP_ORDER = ['General','Outcomes','Output','Reporting'];
+
+/* Every step gets the same Reporting toggle — appended once, below, to
+   every bespoke and generic panel entry rather than repeated inline. */
+function withReporting(panel){
+  panel.blocks.push({ group:'Reporting', kind:'methods',
+    methods:[{ k:'report_step_data', label:'Report Step Data', on:false }] });
+  return panel;
+}
 
 const PANELS = {
   'get-info': {
@@ -140,42 +163,44 @@ const PANELS = {
         { k:'app_data', kind:'expr', label:'App data', value:'{}' },
         { k:'output_var', kind:'text', label:'Output Variable', value:'loginData', hint:'Name of output variable for the step result' },
       ]},
-      { group:'Branching', kind:'summary', label:'Branches', value:'Password, Passkeys' },
+      { group:'Outcomes', kind:'summary', label:'Branches', value:'Password, Passkeys' },
     ],
   },
   'password-auth': {
     blocks: [
-      { group:'Input', fields:[
-        { k:'username', kind:'expr', label:'Username', value:'loginData.username' },
+      { group:'General', fields:[
+        { k:'username', kind:'expr', label:'Username', value:'loginData.username', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
         { k:'password', kind:'expr', label:'Password', value:'', required:true,
           placeholder:'clientData.password',
-          validate:v => v.trim() ? null : 'This field is required' },
+          validate:v => v.trim() ? null : 'Required field not set' },
       ]},
       { group:'Output', fields:[
         { k:'error_var', kind:'text', label:'Error output variable', value:'', hint:'Name of error variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
   'passkeys-auth': {
     blocks: [
-      { group:'Input', fields:[
-        { k:'webauthn', kind:'expr', label:'Encoded result', value:'loginData.webauthn_encoded_result', hint:'WebAuthn Encoded Result' },
+      { group:'General', fields:[
+        { k:'webauthn', kind:'expr', label:'Encoded result', value:'loginData.webauthn_encoded_result', hint:'WebAuthn Encoded Result',
+          required:true, validate:v => v.trim() ? null : 'Required field not set' },
       ]},
       { group:'Output', fields:[
         { k:'error_var', kind:'text', label:'Error output variable', value:'', hint:'Name of error variable for the step result' },
         { k:'output_var', kind:'text', label:'Output Variable', value:'webauthnResult', hint:'Name of output variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
   'known-device': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'binding_key', kind:'expr', label:'Crypto binding key', value:'clientData.crypto_binding_key' },
       ]},
       { group:'Output', fields:[
@@ -185,8 +210,9 @@ const PANELS = {
   },
   'email-validation': {
     blocks: [
-      { group:'Input', fields:[
-        { k:'email', kind:'expr', label:'Email', value:'clientData.userEmail' },
+      { group:'General', fields:[
+        { k:'email', kind:'expr', label:'Email', value:'clientData.userEmail', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
         { kind:'stepper-row', steppers:[
           { k:'code_length', label:'Code length', value:6, min:4, max:10 },
           { k:'expiry', label:'Expiry', labelNote:'(Minutes)', value:6, min:1, max:60 },
@@ -196,30 +222,35 @@ const PANELS = {
       { group:'Output', fields:[
         { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', basic:true, fields:[
         { k:'on_fail', kind:'select', label:'End user failed validation', value:'Go to action failed branch', options:['Go to action failed branch','Abort journey','Retry step'] },
         { k:'on_cancel', kind:'select', label:'End user clicked cancel', value:'Abort journey', options:['Abort journey','Go to action failed branch'] },
       ]},
-      { group:'Branching', kind:'branches' },
+      { group:'Outcomes', kind:'branches' },
     ],
   },
   'send-sms': {
     blocks: [
-      { group:'Input', fields:[
-        { k:'recipient', kind:'expr', label:'Recipient', value:'clientData.userPhone' },
-        { k:'message_body', kind:'expr', label:'Message body', value:'Your verification is complete.' },
-        { k:'sms_provider', kind:'ec', ecType:'sms', label:'SMS provider', value:'', required:true,
+      { group:'General', fields:[
+        { k:'recipient', kind:'expr', label:'Recipient', value:'clientData.userPhone', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
+        { k:'message_body', kind:'expr', label:'Message', value:'Your verification is complete.', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
+        { k:'sender', kind:'expr', label:'From', value:'', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
+        { k:'sms_provider', kind:'ec', ecType:'sms', label:'SMS service', value:'', required:true,
           validate:v => v.trim() ? null : 'Required field not set' },
       ]},
       { group:'Output', fields:[
         { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of the variable to store the results of this action' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
 };
+Object.keys(PANELS).forEach(k=>withReporting(PANELS[k]));
 
 /* External Connections — options + per-type metadata for the inline creation
    dialog. The dropdown must be honest about enabled/disabled — disabled
@@ -380,21 +411,21 @@ return @std.reduce(indices, (acc, idx) => acc + @strings.substring(chars, idx, i
 Object.assign(PANELS, {
   'generic-auth': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'identifier', kind:'expr', label:'Identifier', value:'', placeholder:'e.g. clientData.username', hint:'User identifier passed to this step' },
       ]},
       { group:'Output', fields:[
         { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
         { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of output variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
   'generic-otp': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'identifier', kind:'expr', label:'Identifier', value:'', placeholder:'e.g. clientData.email', hint:'Address to send the OTP to' },
         { kind:'stepper-row', steppers:[
           { k:'code_length', label:'Code length', value:6, min:4, max:10 },
@@ -405,7 +436,7 @@ Object.assign(PANELS, {
       { group:'Output', fields:[
         { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', basic:true, fields:[
         { k:'on_fail', kind:'select', label:'End user failed validation', value:'Go to action failed branch', options:['Go to action failed branch','Abort journey','Retry step'] },
         { k:'on_cancel', kind:'select', label:'End user clicked cancel', value:'Abort journey', options:['Abort journey','Go to action failed branch'] },
       ]},
@@ -421,37 +452,38 @@ Object.assign(PANELS, {
   },
   'generic-condition': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'condition', kind:'expr', label:'Condition', value:'', placeholder:'e.g. user.age >= 18', hint:'Expression evaluated to determine the branch' },
       ]},
     ],
   },
   'generic-server': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'input_data', kind:'expr', label:'Input data', value:'{}', hint:'Data passed to this step' },
       ]},
       { group:'Output', fields:[
         { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of output variable for the step result' },
         { k:'error_var', kind:'text', label:'Error Output Variable', value:'error', hint:'Name of error variable for the step result' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
   'generic-send': {
     blocks: [
-      { group:'Input', fields:[
+      { group:'General', fields:[
         { k:'recipient', kind:'expr', label:'Recipient', value:'', placeholder:'e.g. clientData.email', hint:'Recipient address or identifier' },
         { k:'message_body', kind:'expr', label:'Message body', value:'', placeholder:'e.g. Your code is {{code}}' },
       ]},
       { group:'Output', fields:[
         { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of the variable to store the results of this action' },
       ]},
-      { group:'Error Management', fields:[
+      { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
       ]},
     ],
   },
 });
+['generic-auth','generic-otp','generic-collect','generic-condition','generic-server','generic-send'].forEach(k=>withReporting(PANELS[k]));

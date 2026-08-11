@@ -201,14 +201,30 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 .sidepanel{width:440px;background:var(--white);border-left:1px solid var(--black10);display:flex;flex-direction:column;flex:none;z-index:15}
 .sidepanel.closed{display:none}
 .sp-header{padding:18px 20px 14px;background:var(--white);flex:none;border-bottom:1px solid var(--black5)}
+/* Row 1: badge left, mode/close actions right — kept separate from the
+   title so the badge doesn't compete with the (much more important) step
+   name for horizontal space. */
 .sp-header-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.sp-title-wrap{display:flex;align-items:center;gap:8px;min-width:0}
+.sp-title-wrap{display:flex;align-items:center;gap:8px;min-width:0;margin-top:10px}
 /* Panel step name is the top of the hierarchy — must outsize the section
    headers below it (TIP heading tokens: h2 20/25). Getting this backwards
    (section titles bigger than the step name) is what read as "wildly huge". */
 .sp-title{font-size:14px;line-height:25px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sp-badge{background:var(--black5);border-radius:4px;padding:4px 8px;font-size:12px;line-height:14px;color:var(--black);flex:none}
 .sp-sub{font-size:12px;line-height:16px;color:var(--black60);margin-top:6px}
+/* Title & Description, View-mode-only editable header (side-panel-redesign-
+   epic §1.5) — same "field with a pencil" affordance in both rows, sized to
+   match the text they replace so the header doesn't jump between modes. */
+.sp-title-edit-row{display:flex;align-items:center;gap:6px;min-width:0;flex:1}
+.sp-title-edit-row:last-child{margin-top:0}
+.sp-title-input,.sp-desc-input{flex:1;min-width:0;border:1px solid transparent;border-radius:4px;padding:2px 4px;margin:-2px -4px;
+  font-family:inherit;background:transparent;resize:none;color:var(--black)}
+.sp-title-input{font-size:14px;line-height:25px;font-weight:600}
+.sp-desc-input{font-size:12px;line-height:16px;color:var(--black60)}
+.sp-title-input::placeholder,.sp-desc-input::placeholder{color:var(--black40);font-weight:400}
+.sp-title-input:hover,.sp-desc-input:hover{border-color:var(--black10)}
+.sp-title-input:focus,.sp-desc-input:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-10);background:var(--white)}
+.sp-title-edit-row svg{flex:none;width:12px;height:12px;color:var(--black40)}
 .sp-actions{display:flex;align-items:center;gap:6px}
 .sp-eye-btn{display:none;align-items:center;justify-content:center;width:30px;height:30px;border:none;background:none;color:var(--black60);border-radius:4px;cursor:pointer}
 .sp-eye-btn:hover{background:var(--black5);color:var(--black)}
@@ -234,6 +250,8 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 /* section cards — caret inline with the title, same row */
 .section{border:1px solid var(--black10);border-radius:4px;margin-bottom:14px;background:var(--white)}
 .section-head{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px;background:var(--white);border:none;border-radius:4px;text-align:left}
+/* Single-field section — nothing to collapse, so no button semantics/cursor */
+.section-head.static{cursor:default}
 .section-head .sh-left{display:flex;align-items:center;gap:8px}
 .section-head .chev{display:flex;color:var(--black60);transition:transform .2s ease}
 .section-head .chev svg{width:12px;height:12px}
@@ -316,6 +334,17 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 .toggle.on:hover{background:var(--primary-110)}
 .toggle.on::after{left:14px}
 
+/* Basic/Advanced split within a section (side-panel-redesign-epic §1.5) —
+   required fields (+ core method toggles) render above this, uncollapsed;
+   everything else sits behind this disclosure, collapsed by default. */
+.adv-toggle{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--primary);
+  cursor:pointer;padding:6px 0 2px;user-select:none}
+.adv-toggle .chev{display:flex;transition:transform .12s}
+.adv-toggle .chev svg{width:10px;height:10px}
+.adv-toggle:not(.open) .chev{transform:rotate(-90deg)}
+.adv-body{display:none;flex-direction:column;gap:12px;padding-top:4px}
+.adv-body.open{display:flex}
+
 /* ===== View mode ===== */
 .viewdesc{font-size:12px;color:var(--black60);line-height:1.55;margin:2px 0 14px;max-width:60ch}
 .viewgroup{border:1px solid var(--black10);border-radius:4px;margin-bottom:14px;overflow:hidden}
@@ -327,6 +356,21 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 .viewrow .vv{font-weight:600;text-align:right;max-width:220px;overflow-wrap:anywhere}
 .refchip{display:inline-flex;align-items:center;gap:5px;background:var(--primary-10);color:var(--primary-110);border-radius:4px;padding:2px 2px;font-size:11.5px;font-weight:600;font-family:ui-monospace,"SF Mono",Menlo,monospace}
 .refchip svg{width:10px;height:10px}
+.vv-empty{color:var(--black40);font-weight:400;font-style:italic}
+/* View mode rule 1: a section with a lot set collapses by default, with the
+   top value promoted inline on the chip itself. */
+.view-collapse-chip{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--black60);background:var(--black1);
+  border:1px solid var(--black10);border-radius:4px;padding:7px 10px;margin-top:6px;cursor:pointer;user-select:none}
+.view-collapse-chip .chev{display:flex;transition:transform .12s}
+.view-collapse-chip .chev svg{width:10px;height:10px}
+.view-collapse-chip .chev.up{transform:rotate(180deg)}
+.view-collapse-body{display:none;padding-top:2px}
+.view-collapse-body.open{display:block}
+.view-empty-inline{color:var(--black40);font-size:12px;font-style:italic;padding:8px 0}
+/* Reporting section (rule 3) — always On/Off, never hidden by default value */
+.rep-pill{display:inline-block;font-size:11px;font-weight:700;border-radius:20px;padding:2px 9px}
+.rep-pill.on{background:#EAF5F0;color:#146B54}
+.rep-pill.off{background:var(--black5);color:var(--black40)}
 .view-empty{color:var(--black40);font-size:12px;text-align:center;padding:26px 0}
 .viewgroup-title-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px}
 .viewgroup-title-row .viewgroup-title{padding:0}

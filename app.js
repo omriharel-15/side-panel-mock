@@ -9,7 +9,7 @@
 /* ---------- per-step UI state ---------- */
 const stepState = {};
 function S(id){
-  if(!stepState[id]) stepState[id] = { mode:'view', touched:new Set(), collapsed:{}, hidden:false, committed:true };
+  if(!stepState[id]) stepState[id] = { mode:'view', touched:new Set(), collapsed:{}, advOpen:{}, viewOpen:{}, hidden:false, committed:true };
   return stepState[id];
 }
 let currentStep = null;
@@ -110,14 +110,16 @@ function fieldErrors(nodeId){
   });
   const cb=CUSTOM_BRANCHES[nodeId];
   if(cb) cb.items.forEach((b,i)=>{
-    if(!b.display.trim()) errs.push({nodeId,key:'cb-display-'+i,label:'Branch display name',group:'Branching',message:'This field is required'});
+    if(!b.display.trim()) errs.push({nodeId,key:'cb-display-'+i,label:'Branch display name',group:'Outcomes',message:'This field is required'});
   });
   // A branch that routes nowhere isn't a real, publishable journey — matches
   // the real product's requirement that every branch terminate somewhere
-  // (another step, Complete, Reject) before publish is allowed.
+  // (another step, Complete, Reject) before publish is allowed. Branching
+  // folded into Outcomes (side-panel-redesign-epic §1.5) — failure/cancel
+  // and every other branch are all just "Outcomes" now, no separate group.
   (NODES[nodeId].branches||[]).forEach(b=>{
     const wired=EDGES.some(e=>e.from[0]===nodeId && e.from[1]===b.id);
-    if(!wired) errs.push({nodeId,key:'branch-conn-'+b.id,label:b.label,group:'Branching',message:'Not connected to a next step yet'});
+    if(!wired) errs.push({nodeId,key:'branch-conn-'+b.id,label:b.label,group:'Outcomes',message:'Not connected to a next step yet'});
   });
   return errs;
 }
@@ -562,8 +564,27 @@ function setPreviewDevice(d){ previewDevice=d; renderPanel(); }
 function renderPanel(focusKey){
   if(!currentStep) return;
   const n=NODES[currentStep], st=S(currentStep);
-  $('#spTitle').textContent=n.title;
-  $('#spSub').textContent=S(n.id).descOverride||n.desc;
+  // Title & Description are View-mode-only (side-panel-redesign-epic §1.5) —
+  // in Edit mode the header is plain read-only chrome; in View mode it's the
+  // one editable surface in an otherwise read-only panel.
+  const titleWrap=$('#spTitleWrap'), subEl=$('#spSub');
+  if(st.mode==='view'){
+    titleWrap.innerHTML=`
+      <div class="sp-title-edit-row">
+        <input class="sp-title-input" id="spTitleInput" value="${esc(n.title)}" placeholder="${esc(n.baseTitle||n.title)}"
+          oninput="onTitleOverride(this.value)">
+        ${I.pencil}
+      </div>`;
+    subEl.innerHTML=`
+      <div class="sp-title-edit-row">
+        <textarea class="sp-desc-input" id="spDescInput" rows="1" placeholder="Add a description…"
+          oninput="S(currentStep).descOverride=this.value;markDirty();autoGrowExpr(this)" onblur="renderAfterEdit()">${esc(st.descOverride||'')}</textarea>
+        ${I.pencil}
+      </div>`;
+  } else {
+    titleWrap.innerHTML=`<span class="sp-title" id="spTitle">${esc(n.title)}</span>`;
+    subEl.textContent=st.descOverride||n.desc;
+  }
   // Header controls: mode btn only
   const modeBtn=$('#spModeBtn');
   const footer=$('#spFooter');
@@ -583,6 +604,7 @@ function renderPanel(focusKey){
   // triggers this too, via autoGrowExpr in the oninput handler) — otherwise
   // a pre-filled long expression would show clipped at 32px until touched.
   body.querySelectorAll('.expr-value').forEach(autoGrowExpr);
+  const descInput=$('#spDescInput'); if(descInput) autoGrowExpr(descInput);
   if(focusKey){
     const el=body.querySelector(`[data-field="${focusKey}"]`);
     if(el){ el.classList.add('flash'); el.scrollIntoView({behavior:'smooth',block:'center'}); const inp=el.querySelector('input,select,textarea'); inp&&inp.focus(); }
@@ -597,6 +619,38 @@ function autoGrowExpr(el){
 function groupErrCount(nodeId, group){
   return fieldErrors(nodeId).filter(e=>!e.key.startsWith('branch-conn-') && e.group===group).length;
 }
+/* Basic/Advanced split, decided at block granularity (side-panel-redesign-
+   epic §1.5): a block is Basic if any of its fields is required, or if it's
+   flagged basic:true (composite blocks — methods, branches, summaries — are
+   basic by default since they're core to configuring the step, not optional
+   tuning), or basic:false to force it into Advanced regardless. Everything
+   else collapses behind the Advanced disclosure. */
+function blockIsBasic(block){
+  if(block.basic===true) return true;
+  if(block.basic===false) return false;
+  if(block.kind==='methods'||block.kind==='branches'||block.kind==='summary') return true;
+  return (block.fields||[]).some(f=>f.required===true);
+}
+function blockHasError(nodeId, block){
+  const errs=fieldErrors(nodeId);
+  if(block.kind==='branches') return errs.some(e=>e.key.startsWith('cb-display-'));
+  return (block.fields||[]).some(f=>{
+    const key=f.kind==='stepper-row' ? null : f.k;
+    return key && errs.some(e=>e.key===key);
+  });
+}
+/* How many actual inputs a section holds, for the "one field = not
+   collapsible" rule below — steppers count individually (three real
+   inputs), branches/summary/methods count as one meaningful unit each. */
+function countSectionFields(blocks){
+  let n=0;
+  blocks.forEach(block=>{
+    if(block.kind==='methods') n+=block.methods.length;
+    else if(block.kind==='branches'||block.kind==='summary') n+=1;
+    else (block.fields||[]).forEach(f=>{ n += f.kind==='stepper-row' ? f.steppers.length : 1; });
+  });
+  return n;
+}
 function renderEditMode(n, st){
   const callout = !st.committed
     ? `<div class="new-step-callout"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="12" height="12" aria-hidden="true" style="flex-shrink:0;fill:#4597ff"><path d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zm0-384c13.3 0 24 10.7 24 24l0 112c0 13.3-10.7 24-24 24s-24-10.7-24-24l0-112c0-13.3 10.7-24 24-24zm-32 224a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg><span>New step — configure required fields</span></div>`
@@ -606,41 +660,59 @@ function renderEditMode(n, st){
   (model?.blocks||[]).forEach(b=>{ blocksByGroup.get(b.group).push(b); });
   const sections=FIELD_GROUP_ORDER.map(group=>{
     const blocks=blocksByGroup.get(group);
-    // General always exists (every step can override title/description),
-    // even when the step has no other General-grouped fields.
-    if(group!=='General' && blocks.length===0) return '';
-    const bodies=blocks.map(b=>renderBlock(n,st,b));
-    if(group==='General') bodies.unshift(renderTitleDescBlock(st));
-    return sectionShell(group, groupErrCount(n.id,group), bodies.join(''), st.collapsed[group]);
+    if(blocks.length===0) return '';
+    const basicBlocks=blocks.filter(blockIsBasic);
+    const advBlocks=blocks.filter(b=>!blockIsBasic(b));
+    let body=basicBlocks.map(b=>renderBlock(n,st,b)).join('');
+    if(advBlocks.length){
+      const advHasErr=advBlocks.some(b=>blockHasError(n.id,b));
+      if(advHasErr) st.advOpen[group]=true;
+      // Default Advanced open when the section has no Basic content at all —
+      // a section that's just an "Advanced" toggle over an empty card reads
+      // as broken, not as "nothing required yet". Explicit user toggling
+      // (true/false) always wins over this default.
+      const open = st.advOpen[group] ?? (basicBlocks.length===0);
+      body+=`<div class="adv-toggle ${open?'open':''}" onclick="toggleAdvanced('${group}')">
+          <span class="chev">${I.chevUp}</span> Advanced
+        </div>
+        <div class="adv-body ${open?'open':''}">${advBlocks.map(b=>renderBlock(n,st,b)).join('')}</div>`;
+    }
+    // A section holding exactly one field has nothing meaningful to hide —
+    // collapsing it just adds a click for no reason.
+    const collapsible = countSectionFields(blocks) > 1;
+    return sectionShell(group, groupErrCount(n.id,group), body, collapsible && st.collapsed[group], collapsible);
   }).join('');
   return callout + sections;
 }
-function sectionShell(group, errs, body, collapsed){
+function toggleAdvanced(group){
+  const st=S(currentStep); st.advOpen[group]=!st.advOpen[group]; renderPanel();
+}
+function sectionShell(group, errs, body, collapsed, collapsible=true){
+  // A single-field section has nothing to hide — render its header as static
+  // chrome (no chevron, no click target) instead of a collapse toggle.
+  const head = collapsible
+    ? `<button class="section-head" onclick="toggleSection('${group}')">
+        <span class="sh-left">
+          <span class="chev">${I.chevUp}</span>
+          <span class="title">${esc(group)}</span>
+        </span>
+      </button>`
+    : `<div class="section-head static">
+        <span class="sh-left">
+          <span class="title">${esc(group)}</span>
+        </span>
+      </div>`;
   return `<div class="section ${collapsed?'collapsed':''}" data-section="${group}">
-    <button class="section-head" onclick="toggleSection('${group}')">
-      <span class="sh-left">
-        <span class="chev">${I.chevUp}</span>
-        <span class="title">${esc(group)}</span>
-      </span>
-    </button>
+    ${head}
     <div class="section-body">${body}</div>
   </div>`;
-}
-function renderTitleDescBlock(st){
-  return `
-    <div class="field"><label>Title</label>
-      <input class="tsinput" data-testid="title-override" value="${esc(st.titleOverride||'')}" oninput="onTitleOverride(this.value)">
-      <div class="field-hint">Override step title</div></div>
-    <div class="field"><label>Description</label>
-      <input class="tsinput" data-testid="desc-override" value="${esc(st.descOverride||'')}" oninput="S(currentStep).descOverride=this.value;markDirty()" onblur="renderPanel()">
-      <div class="field-hint">Override step description</div></div>`;
 }
 function renderBlock(n, st, block){
   if(block.kind==='methods'){
     return block.methods.map(m=>`
-      <div class="method-row"><span class="mr-left">${m.label==='Passkeys'?I.passkey:I.card}${esc(m.label)}</span>
+      <div class="method-row"><span class="mr-left">${m.label==='Passkeys'?I.passkey:m.label==='Report Step Data'?I.docs:I.card}${esc(m.label)}</span>
         <button class="toggle ${m.on?'on':''}" role="switch" aria-checked="${m.on}" aria-label="${esc(m.label)}"
-          onclick="this.classList.toggle('on');markDirty();toast('${esc(m.label)} ${m.on?'disabled':'enabled'}')"></button>
+          onclick="toggleMethod('${m.k}')"></button>
       </div>`).join('');
   }
   if(block.kind==='summary'){
@@ -748,6 +820,19 @@ function findField(nodeId,key){
   for(const {f} of fieldsOf(nodeId)) if(f.k===key) return f;
   return null;
 }
+function findMethod(nodeId,key){
+  const model=PANELS[nodeId]; if(!model) return null;
+  for(const b of model.blocks){ if(b.kind==='methods'){ const m=b.methods.find(x=>x.k===key); if(m) return m; } }
+  return null;
+}
+function toggleMethod(key){
+  const m=findMethod(currentStep,key); if(!m) return;
+  m.on=!m.on;
+  S(currentStep).touched.add(key);
+  markDirty();
+  toast(`${esc(m.label)} ${m.on?'enabled':'disabled'}`);
+  renderAfterEdit();
+}
 function onFieldInput(key,value){
   const f=findField(currentStep,key); if(!f) return;
   f.value=value; S(currentStep).touched.add(key); markDirty();
@@ -770,7 +855,9 @@ function onTitleOverride(v){
   if(!node.baseTitle) node.baseTitle=node.title;
   node.title=v.trim()||node.baseTitle;
   markDirty();
-  $('#spTitle').textContent=node.title;
+  // #spTitle only exists in Edit mode's read-only header; in View mode the
+  // title lives in #spTitleInput and already reflects what the user typed.
+  const spTitle=$('#spTitle'); if(spTitle) spTitle.textContent=node.title;
   const tEl=document.querySelector(`#node-${currentStep} .node-title`);
   if(tEl) tEl.textContent=node.title;
 }
@@ -806,10 +893,29 @@ function onBranchDisplay(nodeId,i,v){
 }
 
 /* ---------- View mode ---------- */
+/* ---------- View mode — six locked rules (side-panel-redesign-epic §1.2) ----------
+   1. A section with a lot set defaults to collapsed, with the highest-priority
+      value promoted inline.
+   2. Required fields (and method toggles, which define the step's core
+      behavior the same way) are always shown individually, never folded.
+   3. Reporting is always shown, plainly, as On or Off.
+   4. Output is always shown unless the step defines no output at all.
+   5. Outcomes is always shown unless the step defines no branches/outcome fields.
+   6. A validation error always forces its section open, overriding collapse.
+   Supplementary: a non-required field only shows if its value differs from
+   default — approximated here as "non-empty", since this mock has no
+   separate default-value baseline to diff against. */
 function renderViewMode(n){
   const model=PANELS[n.id];
-  let html='';
-  // Required fields progress bar (only when there are missing required fields)
+  const st=S(n.id);
+  const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+  // only field-config errors in view mode — disconnected-branch errors stay on the save button only
+  const errs=fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-'));
+  const errKeys=new Set(errs.map(e=>e.key));
+  const errsByGroup=new Map();
+  errs.forEach(e=>{ errsByGroup.set(e.group, (errsByGroup.get(e.group)||0)+1); });
+
+  // Required-fields progress bar (only when there are missing required fields)
   const reqFields=fieldsOf(n.id).filter(({f})=>f.required&&f.validate);
   const filledReq=reqFields.filter(({f})=>!f.validate(String(f.value??''))).length;
   const totalReq=reqFields.length;
@@ -824,49 +930,98 @@ function renderViewMode(n){
         </div>
       </div>`
     : '';
-  // only field-config errors in view mode — disconnected-branch errors stay on the save button only
-  const errs=fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-'));
-  // group errors by their group name for per-section badges
-  const errsByGroup=new Map();
-  errs.forEach(e=>{ if(!errsByGroup.has(e.group)) errsByGroup.set(e.group,0); errsByGroup.set(e.group, errsByGroup.get(e.group)+1); });
-  const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-  const rowsByGroup=new Map(FIELD_GROUP_ORDER.map(g=>[g,[]]));
-  (model?.blocks||[]).forEach(block=>{
-    const rows=rowsByGroup.get(block.group);
-    if(block.kind==='methods'){
-      block.methods.forEach(m=>rows.push({l:m.label, v:m.on?'Enabled':'Disabled'}));
-    } else if(block.kind==='branches' || block.kind==='summary'){
-      return; // branches get their own "Branching" card below, built from n.branches
-    } else {
+
+  const rowHtml=(l,v,ref)=>`<div class="viewrow"><span class="vl">${esc(l)}</span><span class="vv">${
+    v==='' ? '<span class="vv-empty">Not set</span>' : (ref?`<span class="refchip">${I.link}${esc(v)}</span>`:esc(v))
+  }</span></div>`;
+  // simple fields (kind 'expr'/'text'/'select'/'ec') for a given group, split by required-ness
+  function fieldRows(group, wantRequired){
+    const rows=[];
+    (model?.blocks||[]).forEach(block=>{
+      if(block.group!==group || block.kind==='methods'||block.kind==='branches'||block.kind==='summary') return;
       (block.fields||[]).forEach(f=>{
-        if(f.kind==='stepper-row'){ f.steppers.forEach(s=>rows.push({l:s.label, v:String(s.value)})); return; }
+        if(f.kind==='stepper-row'){
+          if(!wantRequired) f.steppers.forEach(s=>rows.push({l:s.label, v:String(s.value)}));
+          return;
+        }
+        const isReq=f.required===true;
+        if(isReq!==wantRequired) return;
         const v=String(f.value??'').trim();
-        if(!v) return;
-        rows.push({l:f.label, v, ref:fieldExprMode(f)==='expr'&&BARE_REF.test(v)});
+        if(!isReq && !v) return; // non-required + unset = same as default, hide
+        rows.push({ k:f.k, l:f.label, v, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v) });
       });
+    });
+    return rows;
+  }
+  function methodRows(group){
+    const rows=[];
+    (model?.blocks||[]).forEach(block=>{
+      if(block.group===group && block.kind==='methods') block.methods.forEach(m=>rows.push({l:m.label, v:m.on?'On':'Off'}));
+    });
+    return rows;
+  }
+  function badgeFor(group){
+    const c=errsByGroup.get(group)||0;
+    return c?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${c} issue${c>1?'s':''}</button>`:'';
+  }
+  function card(title, badge, body){
+    return `<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(title)}</span>${badge}</div><div class="viewrows">${body}</div></div>`;
+  }
+
+  let html=reqBar;
+
+  // ---- General: rules 1, 2, 6 ----
+  {
+    const always=[...methodRows('General'), ...fieldRows('General', true)]; // methods + required — never collapsed
+    const rest=fieldRows('General', false);
+    const hiddenErr=rest.some(r=>errKeys.has(r.k)); // future-proofing: if a non-required field ever gets a validate()
+    if(hiddenErr) st.viewOpen['General']=true;
+    let body=always.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
+    if(rest.length){
+      if(rest.length<=3){
+        body+=rest.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
+      } else {
+        const open=!!st.viewOpen['General'];
+        body+=`<div class="view-collapse-chip" onclick="toggleViewRest('General')">${rest.length} set — “${esc(rest[0].v)}” +${rest.length-1} <span class="chev ${open?'up':''}">${I.chevUp}</span></div>
+          <div class="view-collapse-body ${open?'open':''}">${rest.map(r=>rowHtml(r.l,r.v,r.ref)).join('')}</div>`;
+      }
     }
-  });
-  const groups=FIELD_GROUP_ORDER
-    .filter(g=>g!=='Branching' && rowsByGroup.get(g).length)
-    .map(g=>({title:g, rows:rowsByGroup.get(g)}));
-  groups.forEach(g=>{
-    const gErrs=errsByGroup.get(g.title)||0;
-    const badge=gErrs?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${gErrs} issue${gErrs>1?'s':''}</button>`:'';
-    html+=`<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(g.title)}</span>${badge}</div><div class="viewrows">`+
-      g.rows.map(r=>`<div class="viewrow"><span class="vl">${esc(r.l)}</span><span class="vv">${r.ref?`<span class="refchip">${I.link}${esc(r.v)}</span>`:esc(r.v)}</span></div>`).join('')+
-      `</div></div>`;
-  });
-  if(n.branches.length){
-    const bErrs=errsByGroup.get('Branching')||0;
-    const bBadge=bErrs?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${bErrs} issue${bErrs>1?'s':''}</button>`:'';
-    html+=`<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">Branching</span>${bBadge}</div><div class="viewrows">
-      <div class="viewrow"><span class="vl">Branches</span><span class="vv">${esc(n.branches.map(b=>b.label).join(', '))}</span></div>
-    </div></div>`;
+    if(always.length||rest.length) html+=card('General', badgeFor('General'), body);
   }
-  if(!groups.length&&!n.branches.length){
-    html+=`<div class="view-empty">Nothing configured yet — this step runs with its defaults.</div>`;
+
+  // ---- Outcomes: rule 5 — always shown unless there are no branches and no Outcomes fields ----
+  {
+    const outcomeFields=[...fieldRows('Outcomes', true), ...fieldRows('Outcomes', false)];
+    if(n.branches.length || outcomeFields.length){
+      let body = n.branches.length ? rowHtml('Branches', n.branches.map(b=>b.label).join(', ')) : '';
+      body += outcomeFields.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
+      html+=card('Outcomes', badgeFor('Outcomes'), body);
+    }
   }
-  return reqBar + html;
+
+  // ---- Output: rule 4 — always shown if the step's model defines an Output block at all ----
+  {
+    const outputBlocks=(model?.blocks||[]).filter(b=>b.group==='Output');
+    if(outputBlocks.length){
+      const rows=[];
+      outputBlocks.forEach(block=>(block.fields||[]).forEach(f=>{
+        const v=String(f.value??'').trim();
+        rows.push({l:f.label, v, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v)});
+      }));
+      html+=card('Output', badgeFor('Output'), rows.map(r=>rowHtml(r.l,r.v,r.ref)).join(''));
+    }
+  }
+
+  // ---- Reporting: rule 3 — always shown, plainly On/Off, never filtered by default ----
+  {
+    const reportOn=!!findMethod(n.id,'report_step_data')?.on;
+    html+=card('Reporting','', `<div class="viewrow"><span class="vl">Report Step Data</span><span class="vv"><span class="rep-pill ${reportOn?'on':'off'}">${reportOn?'On':'Off'}</span></span></div>`);
+  }
+
+  return html;
+}
+function toggleViewRest(key){
+  S(currentStep).viewOpen[key]=!S(currentStep).viewOpen[key]; renderPanel();
 }
 
 /* ---------- Preview ---------- */
@@ -943,6 +1098,7 @@ function jumpToError(i){
   st.mode='edit'; noteEnteredEditMode();
   st.touched.add(e.key);
   st.collapsed[e.group]=false;
+  st.advOpen[e.group]=true; // the field may be sitting in the Advanced disclosure — force it open too
   previewOpen=false;
   $('#sidepanel').classList.remove('closed');
   renderCanvas();
@@ -1047,7 +1203,7 @@ function insertStep(s,cat){
   }
   markDirty();
   closeAddStep();
-  stepState[newId]={ mode:'edit', touched:new Set(), collapsed:{}, hidden:false, committed:false };
+  stepState[newId]={ mode:'edit', touched:new Set(), collapsed:{}, advOpen:{}, viewOpen:{}, hidden:false, committed:false };
   if(s.panelKey){ const clone=clonePanelTemplate(s.panelKey); if(clone) PANELS[newId]=clone; }
   renderCanvas();
   openPanel(newId,'edit');

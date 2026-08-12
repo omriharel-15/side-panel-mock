@@ -89,7 +89,6 @@
             <div class="toolbar-right-row">
               <button class="chip-btn" onclick="toast('Dev tools')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg> Dev tools <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
               <button class="chip-btn" onclick="toast('Test journey — opens the journey test runner')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg> Test journey <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
-              <button class="chip-btn" onclick="openAddStep(null)">+ Add step</button>
               <button class="btn-save-draft" onclick="onSaveClick()">Save draft</button>
               <div class="issues-pill-wrap">
                 <button class="issues-pill" id="issuesPill" onclick="openErrMenu(event)">
@@ -115,6 +114,15 @@
           <div id="danglingAdders"></div>
         </div>
       </div>
+
+      <!-- "+ Add step" doesn't live in the top toolbar IRL — in prod you add
+           a step from a node's branch. This mock skips that per-branch
+           affordance and keeps one floating button with the same
+           functionality, so it's still reachable without cluttering the
+           journey-level toolbar. -->
+      <button class="canvas-add-step-btn" onclick="openAddStep(null)" title="Add step">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
 
       <div class="zoomctrl">
         <div class="zoom-col">

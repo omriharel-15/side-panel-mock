@@ -593,9 +593,4 @@ body.wiring,body.wiring *{cursor:crosshair!important}
 .sp-cancel-btn{height:30px;padding:0 12px;border-radius:4px;border:1px solid var(--black20);background:#fff;font-size:12px;font-weight:600;color:var(--black);cursor:pointer;font-family:inherit}
 .sp-cancel-btn:hover{border-color:var(--black40);background:var(--black1)}
 .sp-done-btn{height:30px;padding:0 12px;border-radius:4px;border:1px solid #6981FF;background:#6981FF;font-size:12px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit}
-.sp-done-btn:hover{background:#5a72ef;border-color:#5a72ef}.req-progress{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;margin-bottom:12px;background:#fff;border-bottom:1px solid var(--black10)}
-.req-label{font-size:12px;color:var(--black40)}
-.req-right{display:flex;align-items:center;gap:8px}
-.req-track{width:56px;height:4px;background:#fecaca;border-radius:2px;overflow:hidden}
-.req-fill{height:100%;background:#A32D2D;border-radius:2px;transition:width .3s ease}
-.req-count{font-size:12px;font-weight:600;color:#A32D2D;min-width:28px;text-align:right}
+.sp-done-btn:hover{background:#5a72ef;border-color:#5a72ef}

@@ -911,22 +911,6 @@ function renderViewMode(n){
   const errs=fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-'));
   const errKeys=new Set(errs.map(e=>e.key));
 
-  // Required-fields progress bar (only when there are missing required fields)
-  const reqFields=fieldsOf(n.id).filter(({f})=>f.required&&f.validate);
-  const filledReq=reqFields.filter(({f})=>!f.validate(String(f.value??''))).length;
-  const totalReq=reqFields.length;
-  const missingReq=totalReq-filledReq;
-  const pct=totalReq>0?Math.round((filledReq/totalReq)*100):0;
-  const reqBar=(totalReq>0&&missingReq>0)
-    ? `<div class="req-progress">
-        <span class="req-label">Required fields</span>
-        <div class="req-right">
-          <div class="req-track"><div class="req-fill" style="width:${pct}%"></div></div>
-          <span class="req-count">${filledReq} / ${totalReq}</span>
-        </div>
-      </div>`
-    : '';
-
   // Errors no longer surface as a per-section badge (per review of Neta's
   // branch) — instead a required field always carries a trailing asterisk on
   // its label, and if it's empty (the only error shape this mock has) the
@@ -965,7 +949,7 @@ function renderViewMode(n){
     return `<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(title)}</span></div><div class="viewrows">${body}</div></div>`;
   }
 
-  let html=reqBar;
+  let html='';
 
   // ---- General: rules 1, 2, 6 ----
   {

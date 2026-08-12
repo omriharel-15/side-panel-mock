@@ -584,9 +584,8 @@ function renderPanel(focusKey){
   const footer=$('#spFooter');
   if(st.mode==='edit'){
     modeBtn.style.display='none';
-    // Cancel drops back to View without closing the panel; Done closes it
-    // outright — two distinct exits, not one button doing both.
-    if(footer) footer.innerHTML=`<button class="sp-cancel-btn" onclick="setMode('view')">Cancel</button><button class="sp-done-btn" onclick="closePanel()">Done</button>`;
+    // Done returns to View without closing the panel; Cancel closes the panel outright.
+    if(footer) footer.innerHTML=`<button class="sp-cancel-btn" onclick="closePanel()">Cancel</button><button class="sp-done-btn" onclick="setMode('view')">Done</button>`;
   } else {
     modeBtn.style.display='';
     modeBtn.className='sp-mode-btn mode-edit';

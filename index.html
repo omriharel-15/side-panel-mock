@@ -90,10 +90,13 @@
               <button class="chip-btn" onclick="toast('Dev tools')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></svg> Dev tools <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
               <button class="chip-btn" onclick="toast('Test journey — opens the journey test runner')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px;color:#000"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg> Test journey <svg viewBox="0 0 10 6" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 1l4 4 4-4"/></svg></button>
               <button class="chip-btn" onclick="openAddStep(null)">+ Add step</button>
-              <div class="split-save-btn" id="splitSaveBtn">
-                <span class="split-save-err" id="splitSaveErr" onclick="openErrMenu(event)" style="display:none"></span>
-                <span class="split-save-divider" id="splitSaveDivider" style="display:none"></span>
-                <span class="split-save-label" onclick="onSaveClick()">Save draft</span>
+              <button class="btn-save-draft" onclick="onSaveClick()">Save draft</button>
+              <div class="issues-pill-wrap">
+                <button class="issues-pill" id="issuesPill" onclick="openErrMenu(event)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  <span id="issuesPillCount"></span>
+                </button>
+                <div class="issues-pill-tip">Fix all issues before publishing</div>
               </div>
               <span class="btn-publish-wrap" id="publishWrap">
                 <span class="pub-tip" id="pubTip">Save your draft first, then publish</span>

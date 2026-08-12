@@ -127,18 +127,16 @@ function allErrors(){ return Object.keys(NODES).flatMap(fieldErrors); }
 function configErrors(){ return allErrors().filter(e=>!e.key.startsWith('branch-conn-')); }
 function updateErrTag(){
   const errors=configErrors();
-  const btn=$('#splitSaveBtn'), err=$('#splitSaveErr'), div=$('#splitSaveDivider');
-  if(!btn) return;
-  if(errors.length>0){
-    err.style.display='inline-flex';
-    err.textContent=errors.length;
-    div.style.display='block';
-    btn.classList.add('has-errors');
-  } else {
-    err.style.display='none';
-    div.style.display='none';
-    btn.classList.remove('has-errors');
-    closeErrMenu(); // auto-close only when all errors resolved
+  const pill=$('#issuesPill'), pillCount=$('#issuesPillCount');
+  if(pill && pillCount){
+    if(errors.length>0){
+      pill.classList.add('visible');
+      pillCount.textContent=`${errors.length} issue${errors.length!==1?'s':''}`;
+    } else {
+      pillCount.textContent='';
+      pill.classList.remove('visible');
+      closeErrMenu(); // auto-close only when all errors resolved
+    }
   }
   const menu=$('#errMenu');
   if(menu && menu.style.display!=='none') renderErrMenu(); // refresh in-place while open
@@ -153,7 +151,7 @@ function renderErrMenu(){
   const chevSvg2='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
   const items=errors.map(e=>{
     const n=NODES[e.nodeId];
-    return `<div class="err-menu-item" onclick="event.stopPropagation();openPanel('${e.nodeId}','edit');renderCanvas();renderPanel()">
+    return `<div class="err-menu-item" onclick="event.stopPropagation();jumpToField('${e.nodeId}','${e.key}')">
       <span class="err-menu-item-body">
         <div class="err-menu-item-step">${n.title}</div>
         <div class="err-menu-item-err">${e.label} — ${e.message}</div>
@@ -171,7 +169,7 @@ function renderErrMenu(){
 }
 
 function repositionErrMenu(){
-  const menu=$('#errMenu'), anchor=$('#splitSaveBtn');
+  const menu=$('#errMenu'), anchor=$('#issuesPill');
   if(!menu||!anchor||menu.style.display==='none') return;
   const r=anchor.getBoundingClientRect();
   menu.style.top=(r.bottom+8)+'px';
@@ -181,7 +179,7 @@ function repositionErrMenu(){
 function openErrMenu(e){
   if(e) e.stopPropagation();
   const menu=$('#errMenu');
-  const anchor=$('#splitSaveBtn');
+  const anchor=$('#issuesPill');
   if(!menu||!anchor) return;
   renderErrMenu();
   menu.style.display='block';
@@ -564,27 +562,23 @@ function setPreviewDevice(d){ previewDevice=d; renderPanel(); }
 function renderPanel(focusKey){
   if(!currentStep) return;
   const n=NODES[currentStep], st=S(currentStep);
-  // Title & Description are View-mode-only (side-panel-redesign-epic §1.5) —
-  // in Edit mode the header is plain read-only chrome; in View mode it's the
-  // one editable surface in an otherwise read-only panel.
+  // Title & Description are directly editable in the header in both View and
+  // Edit mode — merged in per review of Neta's branch, which builds them
+  // this way instead of the earlier View-mode-only decision (side-panel-
+  // redesign-epic §1.5 will need updating to match; flagged separately).
   const titleWrap=$('#spTitleWrap'), subEl=$('#spSub');
-  if(st.mode==='view'){
-    titleWrap.innerHTML=`
-      <div class="sp-title-edit-row">
-        <input class="sp-title-input" id="spTitleInput" value="${esc(n.title)}" placeholder="${esc(n.baseTitle||n.title)}"
-          oninput="onTitleOverride(this.value)">
-        ${I.pencil}
-      </div>`;
-    subEl.innerHTML=`
-      <div class="sp-title-edit-row">
-        <textarea class="sp-desc-input" id="spDescInput" rows="1" placeholder="Add a description…"
-          oninput="S(currentStep).descOverride=this.value;markDirty();autoGrowExpr(this)" onblur="renderAfterEdit()">${esc(st.descOverride||'')}</textarea>
-        ${I.pencil}
-      </div>`;
-  } else {
-    titleWrap.innerHTML=`<span class="sp-title" id="spTitle">${esc(n.title)}</span>`;
-    subEl.textContent=st.descOverride||n.desc;
-  }
+  titleWrap.innerHTML=`
+    <div class="sp-title-edit-row">
+      <input class="sp-title-input" id="spTitleInput" value="${esc(n.title)}" placeholder="${esc(n.baseTitle||n.title)}"
+        oninput="onTitleOverride(this.value)">
+      ${I.pencil}
+    </div>`;
+  subEl.innerHTML=`
+    <div class="sp-title-edit-row">
+      <textarea class="sp-desc-input" id="spDescInput" rows="1" placeholder="Add a description…"
+        oninput="S(currentStep).descOverride=this.value;markDirty();autoGrowExpr(this)" onblur="renderAfterEdit()">${esc(st.descOverride||'')}</textarea>
+      ${I.pencil}
+    </div>`;
   // Header controls: mode btn only
   const modeBtn=$('#spModeBtn');
   const footer=$('#spFooter');
@@ -624,7 +618,9 @@ function groupErrCount(nodeId, group){
    flagged basic:true (composite blocks — methods, branches, summaries — are
    basic by default since they're core to configuring the step, not optional
    tuning), or basic:false to force it into Advanced regardless. Everything
-   else collapses behind the Advanced disclosure. */
+   else collapses behind the Advanced disclosure — unless the section has no
+   Basic content at all, in which case there's no Advanced disclosure either
+   (see renderEditMode below). */
 function blockIsBasic(block){
   if(block.basic===true) return true;
   if(block.basic===false) return false;
@@ -665,17 +661,21 @@ function renderEditMode(n, st){
     const advBlocks=blocks.filter(b=>!blockIsBasic(b));
     let body=basicBlocks.map(b=>renderBlock(n,st,b)).join('');
     if(advBlocks.length){
-      const advHasErr=advBlocks.some(b=>blockHasError(n.id,b));
-      if(advHasErr) st.advOpen[group]=true;
-      // Default Advanced open when the section has no Basic content at all —
-      // a section that's just an "Advanced" toggle over an empty card reads
-      // as broken, not as "nothing required yet". Explicit user toggling
-      // (true/false) always wins over this default.
-      const open = st.advOpen[group] ?? (basicBlocks.length===0);
-      body+=`<div class="adv-toggle ${open?'open':''}" onclick="toggleAdvanced('${group}')">
-          <span class="chev">${I.chevUp}</span> Advanced
-        </div>
-        <div class="adv-body ${open?'open':''}">${advBlocks.map(b=>renderBlock(n,st,b)).join('')}</div>`;
+      if(basicBlocks.length===0){
+        // No Basic content at all — there's nothing for an "Advanced" toggle
+        // to sit below, so it doesn't get one. Render every field flat and
+        // uncollapsed instead (supersedes the earlier "default Advanced open"
+        // fix, which still looked like a broken empty card with a toggle).
+        body+=advBlocks.map(b=>renderBlock(n,st,b)).join('');
+      } else {
+        const advHasErr=advBlocks.some(b=>blockHasError(n.id,b));
+        if(advHasErr) st.advOpen[group]=true;
+        const open = st.advOpen[group] ?? false;
+        body+=`<div class="adv-toggle ${open?'open':''}" onclick="toggleAdvanced('${group}')">
+            <span class="chev">${I.chevUp}</span> Advanced
+          </div>
+          <div class="adv-body ${open?'open':''}">${advBlocks.map(b=>renderBlock(n,st,b)).join('')}</div>`;
+      }
     }
     // A section holding exactly one field has nothing meaningful to hide —
     // collapsing it just adds a click for no reason.
@@ -855,9 +855,6 @@ function onTitleOverride(v){
   if(!node.baseTitle) node.baseTitle=node.title;
   node.title=v.trim()||node.baseTitle;
   markDirty();
-  // #spTitle only exists in Edit mode's read-only header; in View mode the
-  // title lives in #spTitleInput and already reflects what the user typed.
-  const spTitle=$('#spTitle'); if(spTitle) spTitle.textContent=node.title;
   const tEl=document.querySelector(`#node-${currentStep} .node-title`);
   if(tEl) tEl.textContent=node.title;
 }
@@ -908,12 +905,9 @@ function onBranchDisplay(nodeId,i,v){
 function renderViewMode(n){
   const model=PANELS[n.id];
   const st=S(n.id);
-  const pencilSvg='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
   // only field-config errors in view mode — disconnected-branch errors stay on the save button only
   const errs=fieldErrors(n.id).filter(e=>!e.key.startsWith('branch-conn-'));
   const errKeys=new Set(errs.map(e=>e.key));
-  const errsByGroup=new Map();
-  errs.forEach(e=>{ errsByGroup.set(e.group, (errsByGroup.get(e.group)||0)+1); });
 
   // Required-fields progress bar (only when there are missing required fields)
   const reqFields=fieldsOf(n.id).filter(({f})=>f.required&&f.validate);
@@ -931,8 +925,13 @@ function renderViewMode(n){
       </div>`
     : '';
 
-  const rowHtml=(l,v,ref)=>`<div class="viewrow"><span class="vl">${esc(l)}</span><span class="vv">${
-    v==='' ? '<span class="vv-empty">Not set</span>' : (ref?`<span class="refchip">${I.link}${esc(v)}</span>`:esc(v))
+  // Errors no longer surface as a per-section badge (per review of Neta's
+  // branch) — instead a required field always carries a trailing asterisk on
+  // its label, and if it's empty (the only error shape this mock has) the
+  // value itself reads as red italic "Not set" text, right where the value
+  // would otherwise be.
+  const rowHtml=(l,v,ref,required)=>`<div class="viewrow"><span class="vl${required?' vl-required':''}">${esc(l)}</span><span class="vv">${
+    v==='' ? '<span class="vv-notset">Not set</span>' : (ref?`<span class="refchip">${I.link}${esc(v)}</span>`:esc(v))
   }</span></div>`;
   // simple fields (kind 'expr'/'text'/'select'/'ec') for a given group, split by required-ness
   function fieldRows(group, wantRequired){
@@ -948,7 +947,7 @@ function renderViewMode(n){
         if(isReq!==wantRequired) return;
         const v=String(f.value??'').trim();
         if(!isReq && !v) return; // non-required + unset = same as default, hide
-        rows.push({ k:f.k, l:f.label, v, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v) });
+        rows.push({ k:f.k, l:f.label, v, req:isReq, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v) });
       });
     });
     return rows;
@@ -960,12 +959,8 @@ function renderViewMode(n){
     });
     return rows;
   }
-  function badgeFor(group){
-    const c=errsByGroup.get(group)||0;
-    return c?`<button class="view-issue-badge" onclick="setMode('edit')">${pencilSvg}${c} issue${c>1?'s':''}</button>`:'';
-  }
-  function card(title, badge, body){
-    return `<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(title)}</span>${badge}</div><div class="viewrows">${body}</div></div>`;
+  function card(title, body){
+    return `<div class="viewgroup"><div class="viewgroup-title-row"><span class="viewgroup-title">${esc(title)}</span></div><div class="viewrows">${body}</div></div>`;
   }
 
   let html=reqBar;
@@ -976,17 +971,17 @@ function renderViewMode(n){
     const rest=fieldRows('General', false);
     const hiddenErr=rest.some(r=>errKeys.has(r.k)); // future-proofing: if a non-required field ever gets a validate()
     if(hiddenErr) st.viewOpen['General']=true;
-    let body=always.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
+    let body=always.map(r=>rowHtml(r.l,r.v,r.ref,r.req)).join('');
     if(rest.length){
       if(rest.length<=3){
-        body+=rest.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
+        body+=rest.map(r=>rowHtml(r.l,r.v,r.ref,r.req)).join('');
       } else {
         const open=!!st.viewOpen['General'];
         body+=`<div class="view-collapse-chip" onclick="toggleViewRest('General')">${rest.length} set — “${esc(rest[0].v)}” +${rest.length-1} <span class="chev ${open?'up':''}">${I.chevUp}</span></div>
-          <div class="view-collapse-body ${open?'open':''}">${rest.map(r=>rowHtml(r.l,r.v,r.ref)).join('')}</div>`;
+          <div class="view-collapse-body ${open?'open':''}">${rest.map(r=>rowHtml(r.l,r.v,r.ref,r.req)).join('')}</div>`;
       }
     }
-    if(always.length||rest.length) html+=card('General', badgeFor('General'), body);
+    if(always.length||rest.length) html+=card('General', body);
   }
 
   // ---- Outcomes: rule 5 — always shown unless there are no branches and no Outcomes fields ----
@@ -994,8 +989,8 @@ function renderViewMode(n){
     const outcomeFields=[...fieldRows('Outcomes', true), ...fieldRows('Outcomes', false)];
     if(n.branches.length || outcomeFields.length){
       let body = n.branches.length ? rowHtml('Branches', n.branches.map(b=>b.label).join(', ')) : '';
-      body += outcomeFields.map(r=>rowHtml(r.l,r.v,r.ref)).join('');
-      html+=card('Outcomes', badgeFor('Outcomes'), body);
+      body += outcomeFields.map(r=>rowHtml(r.l,r.v,r.ref,r.req)).join('');
+      html+=card('Outcomes', body);
     }
   }
 
@@ -1006,16 +1001,16 @@ function renderViewMode(n){
       const rows=[];
       outputBlocks.forEach(block=>(block.fields||[]).forEach(f=>{
         const v=String(f.value??'').trim();
-        rows.push({l:f.label, v, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v)});
+        rows.push({l:f.label, v, req:f.required===true, ref: !!v && fieldExprMode(f)==='expr' && BARE_REF.test(v)});
       }));
-      html+=card('Output', badgeFor('Output'), rows.map(r=>rowHtml(r.l,r.v,r.ref)).join(''));
+      html+=card('Output', rows.map(r=>rowHtml(r.l,r.v,r.ref,r.req)).join(''));
     }
   }
 
   // ---- Reporting: rule 3 — always shown, plainly On/Off, never filtered by default ----
   {
     const reportOn=!!findMethod(n.id,'report_step_data')?.on;
-    html+=card('Reporting','', `<div class="viewrow"><span class="vl">Report Step Data</span><span class="vv"><span class="rep-pill ${reportOn?'on':'off'}">${reportOn?'On':'Off'}</span></span></div>`);
+    html+=card('Reporting', `<div class="viewrow"><span class="vl">Report Step Data</span><span class="vv"><span class="rep-pill ${reportOn?'on':'off'}">${reportOn?'On':'Off'}</span></span></div>`);
   }
 
   return html;
@@ -1091,18 +1086,18 @@ function refreshSaveArea(){
   if(pub) pub.disabled=!enabled;
   if(tip) tip.style.display=enabled?'none':'';
 }
-function jumpToError(i){
-  const e=window._readinessErrors[i];
-  currentStep=e.nodeId;
-  const st=S(e.nodeId);
-  st.mode='edit'; noteEnteredEditMode();
-  st.touched.add(e.key);
-  st.collapsed[e.group]=false;
-  st.advOpen[e.group]=true; // the field may be sitting in the Advanced disclosure — force it open too
-  previewOpen=false;
-  $('#sidepanel').classList.remove('closed');
+/* Clicking an error in the issues list jumps straight to that field —
+   opens the step in Edit mode, force-opens whatever section/Advanced
+   disclosure might be hiding it, then hands off to renderPanel's own
+   scroll+flash+focus (via focusKey) rather than duplicating that logic. */
+function jumpToField(nodeId, key){
+  const err=fieldErrors(nodeId).find(e=>e.key===key);
+  openPanel(nodeId,'edit');
+  const st=S(nodeId);
+  st.touched.add(key);
+  if(err){ st.collapsed[err.group]=false; st.advOpen[err.group]=true; }
   renderCanvas();
-  renderPanel(e.key);
+  renderPanel(key);
 }
 
 let pendingAttach=null, asTab='all', asCat='Featured', nodeIdSeq=1;

@@ -84,11 +84,16 @@ const NODES = {
     desc:'Send an SMS message to a recipient.',
     x:1790, y:410, branches:[{id:'default', label:'Default', type:'plain'}],
   },
+  'create-user': {
+    id:'create-user', title:'Create User', cat:'server', userFacing:false,
+    desc:'Creates a new user record from the identifiers collected earlier in the journey.',
+    x:2130, y:410, branches:[{id:'default', label:'Default', type:'plain'}],
+  },
 };
 
 const PILLS = [
   { id:'goto-login', kind:'goto', label:'Login form', x:1170, y:200 },
-  { id:'complete', kind:'complete', label:'Complete Journ…', sub:'Flag this Journey as successfully co…', x:2130, y:340 },
+  { id:'complete', kind:'complete', label:'Complete Journ…', sub:'Flag this Journey as successfully co…', x:2470, y:340 },
 ];
 
 /* email-validation's 'failure' and 'branch_1' branches are deliberately left
@@ -106,7 +111,8 @@ const EDGES = [
   { from:['known-device','yes'], to:'email-validation' },
   { from:['known-device','no'], to:'email-validation' },
   { from:['email-validation','success'], to:'send-sms' },
-  { from:['send-sms','default'], to:'pill:complete' },
+  { from:['send-sms','default'], to:'create-user' },
+  { from:['create-user','default'], to:'pill:complete' },
 ];
 
 /* =====================================================================
@@ -123,12 +129,18 @@ const EDGES = [
 
    Within a section, fields are split Basic/Advanced by required-ness (see
    blockIsBasic() in app.js) — Basic fields render first and are never
-   collapsed, Advanced fields collapse behind a disclosure. If setting one
-   field ever makes another conditionally required (the "hybrid" case —
-   e.g. the roulette prototype's Create User: External User ID set with
-   none of Email/Phone/Username set), the Advanced disclosure should
-   auto-open and flag it; no step in this journey currently has that
-   shape, so the mechanism isn't exercised here yet.
+   collapsed, Advanced fields collapse behind a disclosure. If a section has
+   no Basic fields at all, there's no Advanced disclosure either — everything
+   just renders flat (see renderEditMode() in app.js); a bare "Advanced"
+   toggle over an otherwise-empty card reads as broken, not as "nothing
+   required yet."
+
+   If setting one field ever makes another conditionally required (the
+   "hybrid" case), the Advanced disclosure auto-opens and flags it — this is
+   now exercised for real by the Create User step below: External User ID is
+   Basic/required, but Email/Phone/Username live in the same section's
+   Advanced block, and leaving all three empty while External User ID is set
+   raises an error on Email that force-opens Advanced (see its validate()).
 
    Title and Description are NOT a field group at all anymore — they live
    in the panel header, View-mode-only, editable there directly (see
@@ -243,6 +255,45 @@ const PANELS = {
       ]},
       { group:'Output', fields:[
         { k:'output_var', kind:'text', label:'Output Variable', value:'', hint:'Name of the variable to store the results of this action' },
+      ]},
+      { group:'Outcomes', fields:[
+        { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
+      ]},
+    ],
+  },
+  /* Modeled on the roulette prototype's Create User step
+     (omriharel-15.github.io/new-steps-field-categories) — the one step in
+     this journey with both a real Basic/Advanced split driven purely by
+     required-ness (External User ID vs. everything else) and the hybrid
+     conditional-required case. It also carries enough pre-filled optional
+     fields (First name/Last name/Country/Locale) to exercise View mode's
+     "collapse heavy sections" rule out of the box. */
+  'create-user': {
+    blocks: [
+      { group:'General', fields:[
+        { k:'extuid', kind:'expr', label:'External User ID', value:'clientData.userExternalId', required:true,
+          validate:v => v.trim() ? null : 'Required field not set' },
+      ]},
+      { group:'General', fields:[
+        { k:'email', kind:'expr', label:'Email', value:'',
+          validate:v => {
+            if(v.trim()) return null;
+            const extuidF=findField('create-user','extuid');
+            const phoneF=findField('create-user','phone');
+            const userF=findField('create-user','username');
+            const extuidSet=!!(extuidF && extuidF.value.trim());
+            const otherSet=!!((phoneF&&phoneF.value.trim())||(userF&&userF.value.trim()));
+            return (extuidSet && !otherSet) ? 'Set at least one of Email, Phone, or Username' : null;
+          } },
+        { k:'phone', kind:'expr', label:'Phone', value:'' },
+        { k:'username', kind:'expr', label:'Username', value:'' },
+        { k:'first_name', kind:'expr', label:'First name', value:'clientData.firstName' },
+        { k:'last_name', kind:'expr', label:'Last name', value:'clientData.lastName' },
+        { k:'country', kind:'text', label:'Country', value:'US' },
+        { k:'locale', kind:'text', label:'Locale', value:'en-US' },
+      ]},
+      { group:'Output', fields:[
+        { k:'output_var', kind:'text', label:'Output Variable', value:'newUser', hint:'Name of output variable for the step result' },
       ]},
       { group:'Outcomes', fields:[
         { k:'on_fail', kind:'select', label:'Failure behavior', value:'Go To Failure Branch', options:['Go To Failure Branch','Abort Journey','Retry Step'] },
